@@ -24,7 +24,6 @@ class RankGenEncoder():
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
         self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
         self.model.to(self.device)
-        self.model.eval()
 
     def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
@@ -45,8 +44,7 @@ class RankGenEncoder():
             for k, v in tokenized_inputs.items():
                 tokenized_inputs[k] = v[:, :max_length]
             tokenized_inputs = tokenized_inputs.to(self.device)
-            with torch.inference_mode():
-                batch_embeddings = self.model(**tokenized_inputs)
+            batch_embeddings = self.model(**tokenized_inputs)
             all_embeddings.append(batch_embeddings)
             if return_input_ids:
                 all_input_ids.extend(tokenized_inputs.input_ids.cpu().tolist())

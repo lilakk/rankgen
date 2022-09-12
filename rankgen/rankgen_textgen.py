@@ -20,6 +20,15 @@ def loss_fn(prefix_vector, suffix_vector):
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
     return -similarity
 
+def discretize(embedding):
+    """
+    Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
+    """
+    all_embeddings = rankgen_encoder.model.t5_encoder.shared._parameters['weight']
+    similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
+    max_index = torch.argmax(similarities)
+    return all_embeddings[max_index]
+
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     embedding = rankgen_encoder.model.t5_encoder.shared._parameters['weight']
@@ -29,6 +38,7 @@ def textgen(prefix, suffix, epochs):
         suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
         optimizer.zero_grad()
         for param in rankgen_encoder.model.parameters():
+            print(param)
             param.requires_grad = True
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")

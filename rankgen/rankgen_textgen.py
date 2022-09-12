@@ -31,20 +31,20 @@ def discretize(embedding):
 
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    embedding = rankgen_encoder.model.t5_encoder.shared._parameters['weight']
     optimizer = torch.optim.SGD([embedding], lr=0.001, momentum=0.9)
+    embedding = None
+    for param in rankgen_encoder.model.parameters():
+        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([32128, 2048])):
+            embedding = param
+        param.requires_grad = True
     for i in range(epochs):
         print(f"EPOCH {i}")
         suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
         optimizer.zero_grad()
-        for param in rankgen_encoder.model.parameters():
-            print(param)
-            param.requires_grad = True
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
         optimizer.step()
-        print(embedding)
     return loss
 
 

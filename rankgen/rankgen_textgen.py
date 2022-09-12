@@ -1,9 +1,9 @@
 import torch
 import argparse
 import os
+from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
-
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -12,13 +12,16 @@ parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all
 parser.add_argument('--cache_dir', default=None, type=str)
 args = parser.parse_args()
 
+tokenizer = T5Tokenizer.from_pretrained("t5-large")
 rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args.cache_dir)
-rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_model="gpt2-medium", cache_dir=args.cache_dir)
+rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_model="gpt2-medium",
+                                     cache_dir=args.cache_dir)
 
 
 def loss_fn(prefix_vector, suffix_vector):
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
     return -similarity
+
 
 def discretize(embedding):
     """
@@ -29,14 +32,19 @@ def discretize(embedding):
     max_index = torch.argmax(similarities)
     return all_embeddings[max_index]
 
+
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    optimizer = torch.optim.SGD([embedding], lr=0.001, momentum=0.9)
+    suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids']) # NOTE: this includes the EOS token
     embedding = None
     for param in rankgen_encoder.model.parameters():
-        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([32128, 2048])):
+        param.requires_grad = False
+        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([suffix_len+1, 2048])):  # +1 to account for [suffi]
+            print(param)
             embedding = param
-        param.requires_grad = True
+            param.requires_grad = True
+    optimizer = torch.optim.SGD([embedding], lr=0.001, momentum=0.9)
+
     for i in range(epochs):
         print(f"EPOCH {i}")
         suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]

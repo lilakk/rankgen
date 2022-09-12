@@ -1,4 +1,5 @@
-from transformers import T5Tokenizer, T5EncoderModel, AutoModel
+from transformers import T5Tokenizer, AutoModel
+from t5 import T5EncoderModel
 import pickle
 import argparse
 import numpy as np

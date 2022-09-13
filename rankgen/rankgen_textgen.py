@@ -40,7 +40,7 @@ def textgen(prefix, suffix, epochs):
     embedding = None
     for param in rankgen_encoder.model.parameters():
         param.requires_grad = False
-        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([suffix_len+1, 2048])):  # +1 to account for [suffi]
+        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([19, 2048])):  # +1 to account for [suffi]
             print(param)
             embedding = param
             param.requires_grad = True

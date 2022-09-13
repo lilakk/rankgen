@@ -7,7 +7,7 @@ import tqdm
 import os
 import torch
 
-class RankGenEncoder():
+class RankGenEncoder1():
     def __init__(self, model_path, max_batch_size=32, model_size=None, cache_dir=None):
         assert model_path in ["kalpeshk2011/rankgen-t5-xl-all", "kalpeshk2011/rankgen-t5-xl-pg19", "kalpeshk2011/rankgen-t5-base-all", "kalpeshk2011/rankgen-t5-large-all"]
         self.max_batch_size = max_batch_size
@@ -55,7 +55,7 @@ class RankGenEncoder():
         }
 
 
-class T5XEmbeddingGeneratorLegacy():
+class RankGenEncoder():
     '''This class is deprecated, use RankGenEncoder.'''
 
     def __init__(self, max_batch_size=32, model_path='.', model_size=None, cache_dir=None):

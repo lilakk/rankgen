@@ -913,8 +913,6 @@ class T5Stack(T5PreTrainedModel):
             err_msg_prefix = "decoder_" if self.is_decoder else ""
             raise ValueError(f"You have to specify either {err_msg_prefix}input_ids or {err_msg_prefix}inputs_embeds")
 
-        import pdb
-        pdb.set_trace()
         if inputs_embeds is None and input_ids is not None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = torch.nn.Parameter(self.embed_tokens(input_ids))  # embed_tokens is the embedding vector
@@ -1751,6 +1749,7 @@ class T5EncoderModel(T5PreTrainedModel):
         encoder_config.is_encoder_decoder = False
         self.encoder = T5Stack(encoder_config, self.shared)
         self.suffix_embed = nn.Parameter(torch.zeros(19, config.d_model))
+        print(f"suffix embed: {self.suffix_embed}")
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1825,6 +1824,7 @@ class T5EncoderModel(T5PreTrainedModel):
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        print(f"suffix embed: {self.suffix_embed}")
         encoder_outputs = self.encoder(
             input_ids=input_ids,
             attention_mask=attention_mask,

@@ -37,6 +37,9 @@ def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids'])  # NOTE: this includes the EOS token
+    print(suffix_vector)
+    print(suffix_vector.size())
+    print(f'suffix len: {suffix_len}')
     embedding = None
     for param in rankgen_encoder.model.parameters():
         param.requires_grad = False

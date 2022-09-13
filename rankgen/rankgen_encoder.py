@@ -7,7 +7,7 @@ import tqdm
 import os
 import torch
 
-class RankGenEncoder1():
+class RankGenEncoder():
     def __init__(self, model_path, max_batch_size=32, model_size=None, cache_dir=None):
         assert model_path in ["kalpeshk2011/rankgen-t5-xl-all", "kalpeshk2011/rankgen-t5-xl-pg19", "kalpeshk2011/rankgen-t5-base-all", "kalpeshk2011/rankgen-t5-large-all"]
         self.max_batch_size = max_batch_size
@@ -23,7 +23,7 @@ class RankGenEncoder1():
             self.model_size = model_size
 
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
-        self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
+        self.model = T5EncoderModel.from_pretrained(model_path, trust_remote_code=True)
         self.model.to(self.device)
 
     def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
@@ -49,13 +49,16 @@ class RankGenEncoder1():
             all_embeddings.append(batch_embeddings)
             if return_input_ids:
                 all_input_ids.extend(tokenized_inputs.input_ids.cpu().tolist())
+        all_embeds = [embed[0] for embed in all_embeddings]
+        c = torch.cat(all_embeds, dim=0)
+        print(c.size())
         return {
-            "embeddings": torch.cat(all_embeddings, dim=0),
+            "embeddings": c,
             "input_ids": all_input_ids
         }
 
 
-class RankGenEncoder():
+class ddddRankGenEncoder():
     '''This class is deprecated, use RankGenEncoder.'''
 
     def __init__(self, max_batch_size=32, model_path='.', model_size=None, cache_dir=None):
@@ -71,7 +74,7 @@ class RankGenEncoder():
         else:
             self.model_size = model_size
 
-        with open(os.path.join(model_path, 'state_dict.pickle'), 'rb') as handle:
+        with open(os.path.join('', 'state_dict.pickle'), 'rb') as handle:
             state_dict = pickle.load(handle)
 
         state_dict_new = {}
@@ -84,7 +87,7 @@ class RankGenEncoder():
                 state_dict_new[k] = torch.Tensor(v)
                 state_dict_new["shared.weight"] = torch.Tensor(v)
 
-        with open(os.path.join(model_path, 'projection.pickle'), 'rb') as handle:
+        with open(os.path.join('', 'projection.pickle'), 'rb') as handle:
             self.projection = torch.Tensor(pickle.load(handle))  # (1024, 1024), numpy array
 
         self.projection = self.projection.to(self.device)

@@ -35,6 +35,7 @@ def discretize(embedding):
 
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids']) # NOTE: this includes the EOS token
     embedding = None
     for param in rankgen_encoder.model.parameters():
@@ -47,7 +48,6 @@ def textgen(prefix, suffix, epochs):
 
     for i in range(epochs):
         print(f"EPOCH {i}")
-        suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
         optimizer.zero_grad()
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")

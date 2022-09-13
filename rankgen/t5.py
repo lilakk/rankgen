@@ -876,7 +876,6 @@ class T5Stack(T5PreTrainedModel):
     def forward(
             self,
             input_ids=None,
-            input_one_hot=None,
             attention_mask=None,
             encoder_hidden_states=None,
             encoder_attention_mask=None,
@@ -914,6 +913,8 @@ class T5Stack(T5PreTrainedModel):
             err_msg_prefix = "decoder_" if self.is_decoder else ""
             raise ValueError(f"You have to specify either {err_msg_prefix}input_ids or {err_msg_prefix}inputs_embeds")
 
+        import pdb
+        pdb.set_trace()
         if inputs_embeds is None and input_ids is not None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = torch.nn.Parameter(self.embed_tokens(input_ids))  # embed_tokens is the embedding vector
@@ -1077,7 +1078,7 @@ class T5Stack(T5PreTrainedModel):
                 ]
                 if v is not None
             )
-        return BaseModelOutputWithPastAndCrossAttentions(
+        return inputs_embeds, BaseModelOutputWithPastAndCrossAttentions(
             last_hidden_state=hidden_states,
             past_key_values=present_key_value_states,
             hidden_states=all_hidden_states,

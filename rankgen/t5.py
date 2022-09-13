@@ -1750,7 +1750,7 @@ class T5EncoderModel(T5PreTrainedModel):
         encoder_config.use_cache = False
         encoder_config.is_encoder_decoder = False
         self.encoder = T5Stack(encoder_config, self.shared)
-
+        self.suffix_embed = nn.Parameter(torch.zeros(19, config.d_model))
         # Initialize weights and apply final processing
         self.post_init()
 

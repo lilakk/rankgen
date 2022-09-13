@@ -820,6 +820,7 @@ class T5Stack(T5PreTrainedModel):
 
         self.embed_tokens = embed_tokens
         self.is_decoder = config.is_decoder
+        self.suffix_embeds = torch.nn.Parameter(torch.tensor(1, config.d_model))
 
         self.block = nn.ModuleList(
             [T5Block(config, has_relative_attention_bias=bool(i == 0)) for i in range(config.num_layers)]
@@ -915,7 +916,8 @@ class T5Stack(T5PreTrainedModel):
 
         if inputs_embeds is None and input_ids is not None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
-            inputs_embeds = torch.nn.Parameter(self.embed_tokens(input_ids))  # embed_tokens is the embedding vector
+            inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
+            self.suffix_embeds = inputs_embeds
             print(f'inputs_embeds size: {inputs_embeds.size()}')
 
         batch_size, seq_length = input_shape

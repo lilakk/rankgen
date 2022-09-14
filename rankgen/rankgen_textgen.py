@@ -40,18 +40,18 @@ def textgen(prefix, suffix, epochs):
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids'])  # NOTE: this includes the EOS token
     rankgen_encoder.suffix_len = suffix_len
     print(f'suffix len: {suffix_len}')
-    embedding = None
-    for param in rankgen_encoder.model.parameters():
-        param.requires_grad = False
-        if torch.equal(torch.Tensor(list(param.size())),
-                       torch.Tensor([suffix_len + 1, 2048])):  # +1 to account for [suffi]
-            print(f'param: {param}')
-            embedding = param
-            param.requires_grad = True
-    optimizer = torch.optim.SGD([embedding], lr=0.001, momentum=0.9)
 
     for i in range(epochs):
         print(f"EPOCH {i}")
+        embedding = None
+        for param in rankgen_encoder.model.parameters():
+            param.requires_grad = False
+            if torch.equal(torch.Tensor(list(param.size())),
+                           torch.Tensor([suffix_len + 1, 2048])):  # +1 to account for [suffi]
+                print(f'param: {param}')
+                embedding = param
+                param.requires_grad = True
+        optimizer = torch.optim.SGD([embedding], lr=0.001, momentum=0.9)
         optimizer.zero_grad()
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")

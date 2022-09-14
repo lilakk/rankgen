@@ -1746,7 +1746,7 @@ class T5EncoderModel(T5PreTrainedModel):
     def __init__(self, config: T5Config, suffix_len=2):
         super().__init__(config)
         self.shared = nn.Embedding(config.vocab_size, config.d_model)
-
+        self.config = config
         encoder_config = copy.deepcopy(config)
         encoder_config.use_cache = False
         encoder_config.is_encoder_decoder = False
@@ -1836,3 +1836,17 @@ class T5EncoderModel(T5PreTrainedModel):
         )
 
         return encoder_outputs
+
+class T5EncoderWithProjection(T5PreTrainedModel):
+    def __init__(self, config, encoder):
+        super().__init__(config, encoder)
+        self.t5_encoder = encoder
+        self.projection = nn.Linear(config.d_model, config.d_model, bias=False)
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(self, **input_args):
+        hidden_states = self.t5_encoder(**input_args).last_hidden_state
+        hidden_states = hidden_states[:, 0, :]
+        batch_embeddings = self.projection(hidden_states)
+        return batch_embeddings

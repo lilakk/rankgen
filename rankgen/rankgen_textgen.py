@@ -17,7 +17,6 @@ rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args
 rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_model="gpt2-medium",
                                      cache_dir=args.cache_dir)
 
-print(rankgen_encoder.model)
 
 def loss_fn(prefix_vector, suffix_vector):
     print(prefix_vector.size(), suffix_vector.size())
@@ -44,7 +43,8 @@ def textgen(prefix, suffix, epochs):
     embedding = None
     for param in rankgen_encoder.model.parameters():
         param.requires_grad = False
-        if torch.equal(torch.Tensor(list(param.size())), torch.Tensor([suffix_len+1, 2048])):  # +1 to account for [suffi]
+        if torch.equal(torch.Tensor(list(param.size())),
+                       torch.Tensor([suffix_len + 1, 2048])):  # +1 to account for [suffi]
             print(f'param: {param}')
             embedding = param
             param.requires_grad = True

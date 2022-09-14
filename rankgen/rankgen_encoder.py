@@ -1,5 +1,5 @@
 from transformers import T5Tokenizer, AutoModel
-from t5 import T5EncoderModel
+from t5 import T5EncoderModel, T5EncoderWithProjection
 import pickle
 import argparse
 import numpy as np
@@ -23,7 +23,9 @@ class RankGenEncoder():
             self.model_size = model_size
 
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
-        self.model = T5EncoderModel.from_pretrained(model_path, trust_remote_code=True)
+        t5_encoder = T5EncoderModel.from_pretrained(model_path)
+        self.model = T5EncoderWithProjection(t5_encoder.config, t5_encoder)
+        print(self.model)
         self.model.to(self.device)
 
     def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
@@ -58,7 +60,7 @@ class RankGenEncoder():
         }
 
 
-class ddddRankGenEncoder():
+class T5XEmbeddingGeneratorLegacy():
     '''This class is deprecated, use RankGenEncoder.'''
 
     def __init__(self, max_batch_size=32, model_path='.', model_size=None, cache_dir=None):

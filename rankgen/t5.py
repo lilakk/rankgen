@@ -1079,7 +1079,7 @@ class T5Stack(T5PreTrainedModel):
                 ]
                 if v is not None
             )
-        return inputs_embeds, BaseModelOutputWithPastAndCrossAttentions(
+        return BaseModelOutputWithPastAndCrossAttentions(
             last_hidden_state=hidden_states,
             past_key_values=present_key_value_states,
             hidden_states=all_hidden_states,
@@ -1846,7 +1846,8 @@ class T5EncoderWithProjection(T5PreTrainedModel):
         self.post_init()
 
     def forward(self, **input_args):
-        hidden_states = self.t5_encoder(**input_args).last_hidden_state
+        outputs = self.t5_encoder(**input_args)
+        hidden_states = outputs.last_hidden_state
         hidden_states = hidden_states[:, 0, :]
         batch_embeddings = self.projection(hidden_states)
         return batch_embeddings

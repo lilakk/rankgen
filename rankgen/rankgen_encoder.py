@@ -51,7 +51,7 @@ class RankGenEncoder():
                 all_input_ids.extend(tokenized_inputs.input_ids.cpu().tolist())
         all_embeds = [embed[0] for embed in all_embeddings]
         c = torch.cat(all_embeds, dim=0)
-        print(c.size())
+        c = torch.squeeze(c)
         return {
             "embeddings": c,
             "input_ids": all_input_ids

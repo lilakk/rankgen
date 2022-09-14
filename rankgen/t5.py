@@ -815,12 +815,13 @@ class T5PreTrainedModel(PreTrainedModel):
 
 
 class T5Stack(T5PreTrainedModel):
-    def __init__(self, config, embed_tokens=None):
+    def __init__(self, config, embed_tokens=None, suffix_len=1):
         super().__init__(config)
 
         self.embed_tokens = embed_tokens
         self.is_decoder = config.is_decoder
-        self.suffix_embeds = torch.nn.Parameter(torch.tensor(1, config.d_model))
+        self.suffix_len = suffix_len
+        self.suffix_embeds = torch.nn.Parameter(torch.zeros(suffix_len, config.d_model))
 
         self.block = nn.ModuleList(
             [T5Block(config, has_relative_attention_bias=bool(i == 0)) for i in range(config.num_layers)]
@@ -917,8 +918,8 @@ class T5Stack(T5PreTrainedModel):
         if inputs_embeds is None and input_ids is not None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
-            self.suffix_embeds = inputs_embeds
-            print(f'inputs_embeds size: {inputs_embeds.size()}')
+            self.suffix_embeds = torch.nn.Parameter(torch.squeeze(inputs_embeds))
+            print(f'suffix_embeds size: {self.suffix_embeds.size()}')
 
         batch_size, seq_length = input_shape
 
@@ -1742,16 +1743,14 @@ class T5EncoderModel(T5PreTrainedModel):
         r"encoder.embed_tokens.weight",
     ]
 
-    def __init__(self, config: T5Config):
+    def __init__(self, config: T5Config, suffix_len=2):
         super().__init__(config)
         self.shared = nn.Embedding(config.vocab_size, config.d_model)
 
         encoder_config = copy.deepcopy(config)
         encoder_config.use_cache = False
         encoder_config.is_encoder_decoder = False
-        self.encoder = T5Stack(encoder_config, self.shared)
-        self.suffix_embed = nn.Parameter(torch.zeros(19, config.d_model))
-        print(f"suffix embed: {self.suffix_embed}")
+        self.encoder = T5Stack(encoder_config, self.shared, suffix_len)
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1826,7 +1825,6 @@ class T5EncoderModel(T5PreTrainedModel):
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        print(f"suffix embed: {self.suffix_embed}")
         encoder_outputs = self.encoder(
             input_ids=input_ids,
             attention_mask=attention_mask,

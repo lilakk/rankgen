@@ -20,6 +20,7 @@ rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_m
 print(rankgen_encoder.model)
 
 def loss_fn(prefix_vector, suffix_vector):
+    print(prefix_vector.size(), suffix_vector.size())
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
     return -similarity
 

@@ -36,14 +36,12 @@ def discretize(embedding):
 
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
     suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0][:-1].to(rankgen_encoder.device))
     suffix_index = suffix_tokenized['input_ids'][0][0].item()
-
+    suffix_vector = rankgen_encoder.encode_with_embeddings(suffix_embedding, vectors_type="suffix")["embeddings"]
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids'])  # NOTE: this includes the EOS token
-    rankgen_encoder.suffix_len = suffix_len
     # optimizer = torch.optim.SGD([rankgen_encoder.model.t5_encoder.encoder.suffix_embeds], lr=0.001, momentum=0.9)
     for i in range(epochs):
         print(f"EPOCH {i}")
@@ -51,9 +49,7 @@ def textgen(prefix, suffix, epochs):
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
-        
         grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]
-        print(grad_emb)
         with torch.no_grad():
             new_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index]
             new_val = new_emb + grad_emb

@@ -36,30 +36,37 @@ def discretize(embedding):
 
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
+    suffix_embedding = embedding_vector(rankgen_encoder.tokenizer(suffix)['input_ids'])
+    suffix_index = embedding_vector.weight.size()[0]
+
+    # TODO: find suffix embedding index in embedding vector
+    for i, embed in enumerate(embedding_vector.weight):
+        if torch.eq(embed, suffix_embedding):
+            suffix_index = i
+    assert suffix_index < embedding_vector.weight.size()[0], "suffix embedding was not found in embedding table"
+
     suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids'])  # NOTE: this includes the EOS token
     rankgen_encoder.suffix_len = suffix_len
-    print(f'suffix len: {suffix_len}')
-    for param in rankgen_encoder.model.parameters():
-        # param.requires_grad = False
-        if torch.equal(torch.Tensor(list(param.size())),
-                        torch.Tensor([suffix_len + 1, 2048])):  # +1 to account for [suffi]
-            param.requires_grad = True
-    optimizer = torch.optim.SGD([rankgen_encoder.model.t5_encoder.encoder.suffix_embeds], lr=0.001, momentum=0.9)
+    # optimizer = torch.optim.SGD([rankgen_encoder.model.t5_encoder.encoder.suffix_embeds], lr=0.001, momentum=0.9)
     for i in range(epochs):
         print(f"EPOCH {i}")
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
-        # for param in rankgen_encoder.model.parameters():
-        #    print(param.grad)
-        print(rankgen_encoder.model.t5_encoder.encoder.suffix_embeds.grad)
-        optimizer.step()
-    return loss
+        grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]
+        with torch.no_grad():
+            new_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index]
+            new_val = new_emb + grad_emb
+            rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index].copy_(new_val)
+        # optimizer.step()
+        rankgen_encoder.zero_grad()
+    return
 
 
-pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks resulting mostly from a lack of in-person classes."
-suf = "You"
+pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
+suf = "This"
 
 textgen(pre, suf, 10)

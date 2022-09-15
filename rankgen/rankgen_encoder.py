@@ -7,9 +7,12 @@ import tqdm
 import os
 import torch
 
-class RankGenEncoder():
+
+class RankGenEncoder(torch.nn.Module):
     def __init__(self, model_path, max_batch_size=32, model_size=None, cache_dir=None):
-        assert model_path in ["kalpeshk2011/rankgen-t5-xl-all", "kalpeshk2011/rankgen-t5-xl-pg19", "kalpeshk2011/rankgen-t5-base-all", "kalpeshk2011/rankgen-t5-large-all"]
+        super().__init__()
+        assert model_path in ["kalpeshk2011/rankgen-t5-xl-all", "kalpeshk2011/rankgen-t5-xl-pg19",
+                              "kalpeshk2011/rankgen-t5-base-all", "kalpeshk2011/rankgen-t5-large-all"]
         self.max_batch_size = max_batch_size
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if model_size is None:
@@ -41,7 +44,8 @@ class RankGenEncoder():
 
         all_embeddings = []
         all_input_ids = []
-        for i in tqdm.tqdm(range(0, len(inputs), max_batch_size), total=(len(inputs) // max_batch_size) + 1, disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
+        for i in tqdm.tqdm(range(0, len(inputs), max_batch_size), total=(len(inputs) // max_batch_size) + 1,
+                           disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
             tokenized_inputs = tokenizer(inputs[i:i + max_batch_size], return_tensors="pt", padding=True)
             for k, v in tokenized_inputs.items():
                 tokenized_inputs[k] = v[:, :max_length]
@@ -95,7 +99,8 @@ class T5XEmbeddingGeneratorLegacy():
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
         model = T5EncoderModel.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
         state_dict_keys = [k for k in state_dict_new.keys()]
-        self.model, _, _, _, _ = T5EncoderModel._load_pretrained_model(model, state_dict_new, state_dict_keys, None, f"google/t5-v1_1-{self.model_size}")
+        self.model, _, _, _, _ = T5EncoderModel._load_pretrained_model(model, state_dict_new, state_dict_keys, None,
+                                                                       f"google/t5-v1_1-{self.model_size}")
         self.model.to(self.device)
         self.model.eval()
 
@@ -113,7 +118,8 @@ class T5XEmbeddingGeneratorLegacy():
 
         all_embeddings = []
         all_input_ids = []
-        for i in tqdm.tqdm(range(0, len(inputs), max_batch_size), total=(len(inputs) // max_batch_size) + 1, disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
+        for i in tqdm.tqdm(range(0, len(inputs), max_batch_size), total=(len(inputs) // max_batch_size) + 1,
+                           disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
             tokenized_inputs = tokenizer(inputs[i:i + max_batch_size], return_tensors="pt", padding=True)
             for k, v in tokenized_inputs.items():
                 tokenized_inputs[k] = v[:, :max_length]

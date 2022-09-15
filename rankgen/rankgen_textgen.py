@@ -51,7 +51,9 @@ def textgen(prefix, suffix, epochs):
         loss = loss_fn(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
+        
         grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]
+        print(grad_emb)
         with torch.no_grad():
             new_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index]
             new_val = new_emb + grad_emb

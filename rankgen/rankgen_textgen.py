@@ -37,16 +37,10 @@ def discretize(embedding):
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
-    suffix_tokenized = tokenizer(suffix, return_tensors="pt", padding=True)
+    suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
-    suffix_embedding = embedding_vector(rankgen_encoder.tokenizer(suffix_tokenized.input_ids.cpu().tolist())['input_ids'])
-    suffix_index = embedding_vector.weight.size()[0]
-
-    # TODO: find suffix embedding index in embedding vector
-    for i, embed in enumerate(embedding_vector.weight):
-        if torch.eq(embed, suffix_embedding):
-            suffix_index = i
-    assert suffix_index < embedding_vector.weight.size()[0], "suffix embedding was not found in embedding table"
+    suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0][:-1].to(rankgen_encoder.device))
+    suffix_index = suffix_tokenized['input_ids'][0][0].item()
 
     suffix_len = len(rankgen_encoder.tokenizer(suffix)['input_ids'])  # NOTE: this includes the EOS token
     rankgen_encoder.suffix_len = suffix_len

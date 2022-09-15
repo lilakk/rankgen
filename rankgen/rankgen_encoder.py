@@ -72,7 +72,7 @@ class RankGenEncoder(torch.nn.Module):
         word_embeddings = []
 
         return {
-            "vectors": c,
+            "embeddings": c,
             "input_ids": all_input_ids
         }
 

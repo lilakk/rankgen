@@ -821,7 +821,7 @@ class T5Stack(T5PreTrainedModel):
         self.embed_tokens = embed_tokens
         self.is_decoder = config.is_decoder
         self.suffix_len = suffix_len
-        self.suffix_embeds = torch.nn.Parameter(torch.zeros(suffix_len, config.d_model))
+        self.suffix_embeds = torch.nn.Parameter(torch.zeros(suffix_len, config.d_model).to(self.embed_tokens.weight.device))
 
         self.block = nn.ModuleList(
             [T5Block(config, has_relative_attention_bias=bool(i == 0)) for i in range(config.num_layers)]
@@ -854,6 +854,7 @@ class T5Stack(T5PreTrainedModel):
 
         # Set embed_tokens to first layer
         self.embed_tokens = self.embed_tokens.to(self.first_device)
+        self.suffix_embeds = self.suffix_embeds.to(self.first_device)
         # Set final layer norm to last device
         self.final_layer_norm = self.final_layer_norm.to(self.last_device)
 
@@ -866,6 +867,7 @@ class T5Stack(T5PreTrainedModel):
         for i in range(len(self.block)):
             self.block[i] = self.block[i].to("cpu")
         self.embed_tokens = self.embed_tokens.to("cpu")
+        self.suffix_embeds = self.suffx_embeds.to("cpu")
         self.final_layer_norm = self.final_layer_norm.to("cpu")
         torch.cuda.empty_cache()
 
@@ -894,6 +896,7 @@ class T5Stack(T5PreTrainedModel):
         if self.model_parallel:
             torch.cuda.set_device(self.first_device)
             self.embed_tokens = self.embed_tokens.to(self.first_device)
+            self.suffix_embeds = self.suffix_embeds.to(self.first_device)
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -918,7 +921,7 @@ class T5Stack(T5PreTrainedModel):
         if inputs_embeds is None and input_ids is not None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
-            self.suffix_embeds = torch.nn.Parameter(torch.squeeze(inputs_embeds))
+            self.suffix_embeds = torch.nn.Parameter(inputs_embeds)
             print(f'suffix_embeds size: {self.suffix_embeds.size()}')
 
         batch_size, seq_length = input_shape
@@ -966,7 +969,7 @@ class T5Stack(T5PreTrainedModel):
         position_bias = None
         encoder_decoder_position_bias = None
 
-        hidden_states = self.dropout(inputs_embeds)
+        hidden_states = self.dropout(self.suffix_embeds)
 
         for i, (layer_module, past_key_value) in enumerate(zip(self.block, past_key_values)):
             layer_head_mask = head_mask[i]

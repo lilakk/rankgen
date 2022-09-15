@@ -25,7 +25,6 @@ class RankGenEncoder():
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
         t5_encoder = T5EncoderModel.from_pretrained(model_path)
         self.model = T5EncoderWithProjection(t5_encoder.config, t5_encoder)
-        print(self.model)
         self.model.to(self.device)
 
     def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):

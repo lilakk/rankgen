@@ -30,6 +30,17 @@ class RankGenEncoder(torch.nn.Module):
         self.model = T5EncoderWithProjection(t5_encoder.config, t5_encoder)
         self.model.to(self.device)
 
+    def embed(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
+        tokenizer = self.tokenizer
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        if vectors_type == 'prefix':
+            inputs = ['pre ' + input for input in inputs]
+            max_length = 512
+        else:
+            inputs = ['suffi ' + input for input in inputs]
+            max_length = 128
+
     def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
         max_batch_size = self.max_batch_size
@@ -57,8 +68,11 @@ class RankGenEncoder(torch.nn.Module):
         all_embeds = [embed[0] for embed in all_embeddings]
         c = torch.cat(all_embeds, dim=0)
         c = torch.squeeze(c)
+
+        word_embeddings = []
+
         return {
-            "embeddings": c,
+            "vectors": c,
             "input_ids": all_input_ids
         }
 

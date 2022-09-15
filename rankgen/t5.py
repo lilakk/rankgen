@@ -894,7 +894,6 @@ class T5Stack(T5PreTrainedModel):
         if self.model_parallel:
             torch.cuda.set_device(self.first_device)
             self.embed_tokens = self.embed_tokens.to(self.first_device)
-            self.suffix_embeds = self.suffix_embeds.to(self.first_device)
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -916,7 +915,7 @@ class T5Stack(T5PreTrainedModel):
             err_msg_prefix = "decoder_" if self.is_decoder else ""
             raise ValueError(f"You have to specify either {err_msg_prefix}input_ids or {err_msg_prefix}inputs_embeds")
 
-        if inputs_embeds is None and input_ids is not None:
+        if inputs_embeds is None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
 

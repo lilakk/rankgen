@@ -917,7 +917,8 @@ class T5Stack(T5PreTrainedModel):
         if inputs_embeds is None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
-            inputs_embeds = torch.cat((inputs_embeds, learned_vector[:, None, :]), 1)
+            if learned_vector is not None:
+                inputs_embeds = torch.cat((inputs_embeds, learned_vector[:, None, :]), 1)
 
         batch_size, seq_length = input_shape
 

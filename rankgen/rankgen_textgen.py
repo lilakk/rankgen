@@ -62,7 +62,7 @@ def textgen_new_param(prefix, suffix, epochs):
     suffix_index = suffix_tokenized['input_ids'][0][0].item()
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0][:-1].to(rankgen_encoder.device))
-    learned_vector = torch.nn.Parameter(torch.rand(10).unsqueeze(0), requires_grad=True)
+    learned_vector = torch.nn.Parameter(suffix_embedding, requires_grad=True)
     optimizer = torch.optim.SGD([learned_vector], lr=0.001, momentum=0.9)
     for i in range(epochs):
         print(f"EPOCH {i}")
@@ -79,4 +79,4 @@ def textgen_new_param(prefix, suffix, epochs):
 pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
 suf = "This"
 
-textgen(pre, suf, 10)
+textgen_new_param(pre, suf, 10)

@@ -70,7 +70,9 @@ class RankGenEncoder(torch.nn.Module):
         for i in tqdm.tqdm(range(0, len(input_embeddings), max_batch_size), total=(len(input_embeddings) // max_batch_size) + 1,
                            disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
             with torch.no_grad():
-                hidden_states = self.model(**input_embeddings).last_hidden_state
+                print(f'input embeddings: {input_embeddings}')
+                mapping = {'inputs_embeds': input_embeddings}
+                hidden_states = self.model(**mapping).last_hidden_state
                 hidden_states = hidden_states[:, 0, :]
                 batch_embeddings = torch.matmul(hidden_states, self.projection)
             all_embeddings.append(batch_embeddings)

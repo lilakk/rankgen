@@ -30,7 +30,7 @@ class RankGenEncoder(torch.nn.Module):
         self.model = T5EncoderWithProjection(t5_encoder.config, t5_encoder)
         self.model.to(self.device)
 
-    def encode(self, inputs, vectors_type="prefix", verbose=False, return_input_ids=False):
+    def encode(self, inputs, learned_vector=None, vectors_type="prefix", verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
         max_batch_size = self.max_batch_size
         if isinstance(inputs, str):
@@ -49,6 +49,8 @@ class RankGenEncoder(torch.nn.Module):
             tokenized_inputs = tokenizer(inputs[i:i + max_batch_size], return_tensors="pt", padding=True)
             for k, v in tokenized_inputs.items():
                 tokenized_inputs[k] = v[:, :max_length]
+            if learned_vector is not None:
+                tokenized_inputs['learned_vector'] = learned_vector
             tokenized_inputs = tokenized_inputs.to(self.device)
             batch_embeddings = self.model(**tokenized_inputs)
             all_embeddings.append(batch_embeddings)
@@ -60,23 +62,6 @@ class RankGenEncoder(torch.nn.Module):
 
         return {
             "embeddings": c,
-            "input_ids": all_input_ids
-        }
-
-    def encode_with_param(self, input_embeddings, learned_vector, vectors_type="suffix", verbose=False):
-        max_batch_size = self.max_batch_size
-        all_embeddings = []
-        all_input_ids = []
-        for i in tqdm.tqdm(range(0, len(input_embeddings), max_batch_size), total=(len(input_embeddings) // max_batch_size) + 1,
-                           disable=not verbose, desc=f"Encoding {vectors_type} inputs:"):
-            with torch.no_grad():
-                mapping = {'inputs_embeds': input_embeddings, 'learned_vector': learned_vector}
-                hidden_states = self.model(**mapping).last_hidden_state
-                hidden_states = hidden_states[:, 0, :]
-                batch_embeddings = torch.matmul(hidden_states, self.projection)
-            all_embeddings.append(batch_embeddings)
-        return {
-            "embeddings": torch.cat(all_embeddings, dim=0),
             "input_ids": all_input_ids
         }
 

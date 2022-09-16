@@ -67,7 +67,7 @@ def textgen_new_param(prefix, suffix, epochs):
     for i in range(epochs):
         print(f"EPOCH {i}")
         optimizer.zero_grad()
-        suffix_vector = rankgen_encoder.encode_with_param(suffix, learned_vector, vectors_type="suffix")["embeddings"]
+        suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")["embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)

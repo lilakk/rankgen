@@ -18,10 +18,13 @@ rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_m
                                      cache_dir=args.cache_dir)
 
 
-def loss_fn(prefix_vector, suffix_vector):
-    print(prefix_vector.size(), suffix_vector.size())
+def dot_product_loss(prefix_vector, suffix_vector):
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
     return -similarity
+
+def cosine_similarity_loss(prefix_vector, suffix_vector):
+    cosine_sim = torch.nn.functional.cosine_similarity(suffix_vector, prefix_vector, dim=0)
+    return 1 - cosine_sim
 
 
 def discretize(embedding):
@@ -47,7 +50,7 @@ def textgen(prefix, suffix, epochs):
         print(f"EPOCH {i}")
         # optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
-        loss = loss_fn(prefix_vector, suffix_vector)
+        loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
         grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]

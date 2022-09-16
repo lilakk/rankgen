@@ -852,7 +852,6 @@ class T5Stack(T5PreTrainedModel):
 
         # Set embed_tokens to first layer
         self.embed_tokens = self.embed_tokens.to(self.first_device)
-        self.suffix_embeds = self.suffix_embeds.to(self.first_device)
         # Set final layer norm to last device
         self.final_layer_norm = self.final_layer_norm.to(self.last_device)
 
@@ -865,7 +864,6 @@ class T5Stack(T5PreTrainedModel):
         for i in range(len(self.block)):
             self.block[i] = self.block[i].to("cpu")
         self.embed_tokens = self.embed_tokens.to("cpu")
-        self.suffix_embeds = self.suffx_embeds.to("cpu")
         self.final_layer_norm = self.final_layer_norm.to("cpu")
         torch.cuda.empty_cache()
 
@@ -889,6 +887,7 @@ class T5Stack(T5PreTrainedModel):
             output_attentions=None,
             output_hidden_states=None,
             return_dict=None,
+            learned_vector=None
     ):
         # Model parallel
         if self.model_parallel:
@@ -918,6 +917,7 @@ class T5Stack(T5PreTrainedModel):
         if inputs_embeds is None:
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
+            inputs_embeds = torch.cat((inputs_embeds, learned_vector[:, None, :]), 1)
 
         batch_size, seq_length = input_shape
 
@@ -1804,6 +1804,7 @@ class T5EncoderModel(T5PreTrainedModel):
             output_attentions: Optional[bool] = None,
             output_hidden_states: Optional[bool] = None,
             return_dict: Optional[bool] = None,
+            learned_vector: Optional[torch.FloatTensor] = None
     ) -> Union[Tuple[torch.FloatTensor], BaseModelOutput]:
         r"""
         Returns:
@@ -1831,6 +1832,7 @@ class T5EncoderModel(T5PreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            learned_vector=learned_vector
         )
 
         return encoder_outputs

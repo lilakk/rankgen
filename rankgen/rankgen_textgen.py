@@ -56,6 +56,26 @@ def textgen(prefix, suffix, epochs):
     return
 
 
+def textgen_new_param(prefix, suffix, epochs):
+    prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
+    suffix_index = suffix_tokenized['input_ids'][0][0].item()
+    embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
+    suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0][:-1].to(rankgen_encoder.device))
+    learned_vector = torch.nn.Parameter(torch.rand(10).unsqueeze(0), requires_grad=True)
+    optimizer = torch.optim.SGD([learned_vector], lr=0.001, momentum=0.9)
+    for i in range(epochs):
+        print(f"EPOCH {i}")
+        optimizer.zero_grad()
+        suffix_vector = rankgen_encoder.encode_with_param(suffix, learned_vector, vectors_type="suffix")["embeddings"]
+        loss = cosine_similarity_loss(prefix_vector, suffix_vector)
+        print(f"loss: {loss}")
+        loss.backward(retain_graph=True)
+        optimizer.step()
+        rankgen_encoder.zero_grad()
+    return
+
+
 pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
 suf = "This"
 

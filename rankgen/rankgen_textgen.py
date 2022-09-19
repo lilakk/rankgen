@@ -61,7 +61,7 @@ def textgen_new_param(prefix, suffix, epochs):
     suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     suffix_index = suffix_tokenized['input_ids'][0][0].item()
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
-    suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0][:-1].to(rankgen_encoder.device))
+    suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
     learned_vector = torch.nn.Parameter(suffix_embedding, requires_grad=True)
     optimizer = torch.optim.SGD([learned_vector], lr=0.001, momentum=0.9)
     for i in range(epochs):

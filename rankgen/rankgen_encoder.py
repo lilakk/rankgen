@@ -52,6 +52,7 @@ class RankGenEncoder(torch.nn.Module):
             if learned_vector is not None:
                 tokenized_inputs['learned_vector'] = learned_vector
             tokenized_inputs = tokenized_inputs.to(self.device)
+            print(tokenized_inputs)
             batch_embeddings = self.model(**tokenized_inputs)
             all_embeddings.append(batch_embeddings)
             if return_input_ids:

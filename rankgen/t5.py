@@ -503,6 +503,8 @@ class T5Attention(nn.Module):
                 position_bias = position_bias[:, :, -hidden_states.size(1):, :]
 
             if mask is not None:
+                print(position_bias.size())
+                print(mask.size())
                 position_bias = position_bias + mask  # (batch_size, n_heads, seq_length, key_length)
 
         if self.pruned_heads:
@@ -908,8 +910,6 @@ class T5Stack(T5PreTrainedModel):
         elif input_ids is not None:
             input_shape = input_ids.size()
             input_ids = input_ids.view(-1, input_shape[-1])
-        elif inputs_embeds is not None:
-            input_shape = inputs_embeds.size()[:-1]
         else:
             err_msg_prefix = "decoder_" if self.is_decoder else ""
             raise ValueError(f"You have to specify either {err_msg_prefix}input_ids or {err_msg_prefix}inputs_embeds")
@@ -918,23 +918,28 @@ class T5Stack(T5PreTrainedModel):
             assert self.embed_tokens is not None, "You have to initialize the model with valid token embeddings"
             inputs_embeds = self.embed_tokens(input_ids)  # embed_tokens is the embedding vector
             if learned_vector is not None:
-                inputs_embeds = torch.cat((inputs_embeds, learned_vector[:, None, :]), 1)
+                print(f'inputs_embeds: {inputs_embeds.size()}')
+                inputs_embeds = torch.cat((inputs_embeds, learned_vector[None, :, :]), 1)
+                print(f'input_embeds after concat with learned vec: {inputs_embeds.size()}')
+                input_shape = inputs_embeds.size()[:-1]
 
         batch_size, seq_length = input_shape
+        print(f'input shape: {input_shape}')
 
         # required mask seq length can be calculated via length of past
-        mask_seq_length = past_key_values[0][0].shape[2] + seq_length if past_key_values is not None else seq_length
+        mask_seq_length = seq_length
 
         if use_cache is True:
             assert self.is_decoder, f"`use_cache` can only be set to `True` if {self} is used as a decoder"
 
-        if attention_mask is None:
+        if attention_mask is None or attention_mask.size()[1] != seq_length:
             attention_mask = torch.ones(batch_size, mask_seq_length, device=inputs_embeds.device)
         if self.is_decoder and encoder_attention_mask is None and encoder_hidden_states is not None:
             encoder_seq_length = encoder_hidden_states.shape[1]
             encoder_attention_mask = torch.ones(
                 batch_size, encoder_seq_length, device=inputs_embeds.device, dtype=torch.long
             )
+        print(f'attention mask: {attention_mask}')
 
         # initialize past_key_values with `None` if past does not exist
         if past_key_values is None:
@@ -943,6 +948,7 @@ class T5Stack(T5PreTrainedModel):
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
         extended_attention_mask = self.get_extended_attention_mask(attention_mask, input_shape)
+        print(f'extended_attention_mask: {extended_attention_mask}')
 
         # If a 2D or 3D attention mask is provided for the cross-attention
         # we need to make broadcastable to [batch_size, num_heads, seq_length, seq_length]

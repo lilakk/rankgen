@@ -1,6 +1,7 @@
 import torch
 import argparse
 import os
+import random
 from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
@@ -47,6 +48,12 @@ def discretize(embedding):
     return token
 
 
+def initialize_suffix_token():
+    all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
+    index = random.randint(0, all_embeddings.size()[0]-1)
+    return discretize(all_embeddings[index])
+
+
 def textgen(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
@@ -66,16 +73,15 @@ def textgen(prefix, suffix, epochs):
     return
 
 
-def textgen_new_param(prefix, suffix, epochs):
+def optimize_with_new_param(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
-    suffix_index = suffix_tokenized['input_ids'][0][0].item()
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
-    learned_vector = torch.nn.Parameter(suffix_embedding, requires_grad=True)
+    learned_vector = torch.nn.Parameter(suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
     optimizer = torch.optim.SGD([learned_vector], lr=0.1, momentum=0.9)
+    tokens = []
     for i in range(epochs):
-        old_weight = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
         print(f"EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
@@ -85,14 +91,17 @@ def textgen_new_param(prefix, suffix, epochs):
         loss.backward(retain_graph=True)
         optimizer.step()
         rankgen_encoder.zero_grad()
-        words = []
-        for j in range(learned_vector.size()[0]):
-            words.append(discretize(learned_vector[j]))
-        print(words)
-    return words
+    for j in range(learned_vector.size()[0]):
+        tokens.append(discretize(learned_vector[j]))
+    return tokens
 
 
-pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
-suf = "This"
-
-textgen_new_param(pre, suf, 100)
+def main():
+    pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
+    suf = ""
+    for i in range(10):
+        new_suf = initialize_suffix_token()
+        suf_optim = optimize_with_new_param(pre, new_suf, 100)
+        for token in suf_optim:
+            suf += token + ' '
+        print(suf)

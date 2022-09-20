@@ -35,7 +35,8 @@ def discretize(embedding):
     all_embeddings = rankgen_encoder.model.t5_encoder.shared.weight
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
     max_index = torch.argmax(similarities)  # find most similar word embedding in embedding table
-    return all_embeddings[max_index]
+    token = tokenizer._convert_id_to_token(max_index)
+    return token
 
 
 def textgen(prefix, suffix, epochs):

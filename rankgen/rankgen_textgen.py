@@ -28,6 +28,14 @@ def cosine_similarity_loss(prefix_vector, suffix_vector):
     return 1 - cosine_sim
 
 
+def id_to_token(index):
+    if index < tokenizer.sp_model.get_piece_size():
+        token = tokenizer.sp_model.IdToPiece(index)
+    else:
+        token = f"<extra_id_{tokenizer.vocab_size - 1 - index}>"
+    return token
+
+
 def discretize(embedding):
     """
     Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
@@ -35,7 +43,7 @@ def discretize(embedding):
     all_embeddings = rankgen_encoder.model.t5_encoder.shared.weight
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
     max_index = torch.argmax(similarities)  # find most similar word embedding in embedding table
-    token = tokenizer._convert_id_to_token(max_index)
+    token = id_to_token(max_index)
     return token
 
 

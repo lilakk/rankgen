@@ -22,6 +22,7 @@ def dot_product_loss(prefix_vector, suffix_vector):
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
     return -similarity
 
+
 def cosine_similarity_loss(prefix_vector, suffix_vector):
     cosine_sim = torch.nn.functional.cosine_similarity(suffix_vector, prefix_vector, dim=0)
     return 1 - cosine_sim
@@ -31,9 +32,9 @@ def discretize(embedding):
     """
     Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
     """
-    all_embeddings = rankgen_encoder.model.t5_encoder.shared._parameters['weight']
+    all_embeddings = rankgen_encoder.model.t5_encoder.shared.weight
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
-    max_index = torch.argmax(similarities)
+    max_index = torch.argmax(similarities)  # find most similar word embedding in embedding table
     return all_embeddings[max_index]
 
 
@@ -67,12 +68,17 @@ def textgen_new_param(prefix, suffix, epochs):
     for i in range(epochs):
         print(f"EPOCH {i}")
         optimizer.zero_grad()
-        suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")["embeddings"]
+        suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
+            "embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"loss: {loss}")
         loss.backward(retain_graph=True)
         optimizer.step()
         rankgen_encoder.zero_grad()
+        words = []
+        for j in range(learned_vector.size()[0]):
+            words.append(discretize(learned_vector[j]))
+        print(words)
     return
 
 

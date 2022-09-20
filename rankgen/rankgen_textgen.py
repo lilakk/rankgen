@@ -40,9 +40,9 @@ def discretize(embedding):
     """
     Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
     """
-    all_embeddings = rankgen_encoder.model.t5_encoder.shared.weight
+    all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
-    max_index = torch.argmax(similarities)  # find most similar word embedding in embedding table
+    max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
     token = id_to_token(max_index)
     return token
 
@@ -73,8 +73,9 @@ def textgen_new_param(prefix, suffix, epochs):
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
     learned_vector = torch.nn.Parameter(suffix_embedding, requires_grad=True)
-    optimizer = torch.optim.SGD([learned_vector], lr=0.001, momentum=0.9)
+    optimizer = torch.optim.SGD([learned_vector], lr=0.1, momentum=0.9)
     for i in range(epochs):
+        old_weight = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
         print(f"EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
@@ -88,10 +89,10 @@ def textgen_new_param(prefix, suffix, epochs):
         for j in range(learned_vector.size()[0]):
             words.append(discretize(learned_vector[j]))
         print(words)
-    return
+    return words
 
 
 pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
 suf = "This"
 
-textgen_new_param(pre, suf, 10)
+textgen_new_param(pre, suf, 100)

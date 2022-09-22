@@ -24,14 +24,14 @@ for name, param in rankgen_encoder.named_parameters():
 
 
 class EarlyStopping:
-    def __init__(self, tolerance=5, min_delta=0.01):
+    def __init__(self, tolerance=5, min_delta=0):
         self.tolerance = tolerance
         self.min_delta = min_delta
         self.counter = 0
         self.early_stop = False
 
     def __call__(self, prev_loss, curr_loss):
-        if (prev_loss - curr_loss) > self.min_delta:
+        if (curr_loss - prev_loss) > self.min_delta:
             self.counter += 1
             if self.counter >= self.tolerance:
                 self.early_stop = True
@@ -98,26 +98,27 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     new_suffix_embedding = embedding_vector(new_suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
     learned_vector = torch.nn.Parameter(new_suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
-    optimizer = torch.optim.SGD([learned_vector], lr=0.3, momentum=0.9)
+    optimizer = torch.optim.Adam([learned_vector], lr=0.01)
     losses = []
     tokens = []
-    early_stopping = EarlyStopping(tolerance=5, min_delta=0.01)
-    for i in range(0, 20, epochs):
+    early_stopping = EarlyStopping(tolerance=5, min_delta=0.001)
+    for i in range(epochs):
         print(f"  EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
             "embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"    loss: {loss}")
-        loss.backward(retain_graph=True)
+        loss.backward()
         optimizer.step()
-        if len(losses) > 1:
+        if len(losses) > 0:
             early_stopping(losses[-1], loss)
         if early_stopping.early_stop:
             print(f"stopping at epoch {i}")
             break
         losses.append(loss)
         rankgen_encoder.zero_grad()
+        torch.cuda.empty_cache()
     for j in range(learned_vector.size()[0]):
         tokens.append(discretize(learned_vector[j]))
     return tokens
@@ -129,7 +130,7 @@ def main():
     for i in range(1):
         new_suf = initialize_suffix_token()
         print(f'new token: {new_suf}')
-        suf_optim = optimize_with_new_param(pre, suf, new_suf, 1000)
+        suf_optim = optimize_with_new_param(pre, suf, new_suf, 10000)
         print(f'token after optim: {suf_optim}')
         for token in suf_optim:
             suf += token + " "

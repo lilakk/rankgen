@@ -69,12 +69,12 @@ def discretize(embedding):
 
 def oracle(prefix):
     vocab = []
-    for i in range(32128):
+    for i in range(10):
         vocab.append(id_to_token(i))
     suffix_vectors = [rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"] for suffix in vocab]
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     similarities = [cosine_similarity_loss(prefix_vector, suffix_vector) for suffix_vector in suffix_vectors]
-    max_index = max(similarities)
+    max_index = similarities.index(max(similarities))
     print(vocab[max_index])
     return
 

@@ -90,6 +90,9 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"    loss: {loss}")
         loss.backward(retain_graph=True)
+        for name, param in rankgen_encoder.named_parameters():
+            if 'weight' in name:
+                print(param.grad)
         optimizer.step()
         rankgen_encoder.zero_grad()
     for j in range(learned_vector.size()[0]):
@@ -100,10 +103,6 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
 def main():
     pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
     suf = ""
-    for name, param in rankgen_encoder.named_parameters():
-        if 'weight' in name:
-            print(name)
-            print(param)
     for i in range(1):
         new_suf = initialize_suffix_token()
         print(f'new token: {new_suf}')

@@ -18,6 +18,10 @@ rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args
 rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_model="gpt2-medium",
                                      cache_dir=args.cache_dir)
 
+for name, param in rankgen_encoder.named_parameters():
+    if 'weight' in name:
+        param.requires_grad = False
+
 
 def dot_product_loss(prefix_vector, suffix_vector):
     similarity = torch.matmul(prefix_vector, suffix_vector.t()).squeeze(dim=0)
@@ -90,9 +94,6 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"    loss: {loss}")
         loss.backward(retain_graph=True)
-        for name, param in rankgen_encoder.named_parameters():
-            if 'weight' in name:
-                print(param.grad)
         optimizer.step()
         rankgen_encoder.zero_grad()
     for j in range(learned_vector.size()[0]):

@@ -24,7 +24,7 @@ for name, param in rankgen_encoder.named_parameters():
 
 
 class EarlyStopping:
-    def __init__(self, tolerance=5, min_delta=0):
+    def __init__(self, tolerance=5, min_delta=0.001):
         self.tolerance = tolerance
         self.min_delta = min_delta
         self.counter = 0
@@ -52,7 +52,7 @@ def id_to_token(index):
         token = tokenizer.sp_model.IdToPiece(index)
     else:
         token = f"<extra_id_{tokenizer.vocab_size - 1 - index}>"
-    return token
+    return token.replace("▁", "")
 
 
 def discretize(embedding):
@@ -64,7 +64,19 @@ def discretize(embedding):
     # print(similarities)
     max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
     token = id_to_token(max_index)
-    return token.replace("▁", "")
+    return token
+
+
+def oracle(prefix):
+    vocab = []
+    for i in range(32128):
+        vocab.append(id_to_token(i))
+    suffix_vectors = [rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"] for suffix in vocab]
+    prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    similarities = [cosine_similarity_loss(prefix_vector, suffix_vector) for suffix_vector in suffix_vectors]
+    max_index = max(similarities)
+    print(vocab[max_index])
+    return
 
 
 def initialize_suffix_token():
@@ -105,8 +117,9 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
     for i in range(epochs):
         print(f"  EPOCH {i}")
         optimizer.zero_grad()
-        suffix_vector = rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
-            "embeddings"]
+        suffix_vector = \
+            rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
+                "embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"    loss: {loss}")
         loss.backward()
@@ -126,6 +139,7 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
 
 def main():
     pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
+    oracle(pre)
     suf = ""
     for i in range(1):
         new_suf = initialize_suffix_token()

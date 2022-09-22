@@ -45,7 +45,7 @@ def discretize(embedding):
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
     # print(similarities)
     max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
-    # print(f'max index: {max_index}')
+    print(f'3. max index: {max_index}')
     token = id_to_token(max_index)
     return token.replace("▁", "")
 
@@ -60,7 +60,7 @@ def optimize(prefix, suffix, new_suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
     suffix_index = new_suffix_tokenized['input_ids'][0][0].item()
-    print(f'suffix index: {suffix_index}')
+    print(f'2. suffix index: {suffix_index}')
     for i in range(epochs):
         # print(f"EPOCH {i}")
         suffix_vector = rankgen_encoder.encode(suffix + new_suffix, vectors_type="suffix")["embeddings"]
@@ -68,6 +68,7 @@ def optimize(prefix, suffix, new_suffix, epochs):
         # print(f"loss: {loss}")
         loss.backward(retain_graph=True)
         grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]
+        # print(f'grad emb: {grad_emb}')
         with torch.no_grad():
             emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index]
             new_val = emb - grad_emb
@@ -81,16 +82,18 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
     new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     new_suffix_embedding = embedding_vector(new_suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
+    print(new_suffix_embedding.size())
     learned_vector = torch.nn.Parameter(new_suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
+    print(learned_vector.size())
     optimizer = torch.optim.SGD([learned_vector], lr=0.3, momentum=0.9)
     tokens = []
     for i in range(epochs):
-        # print(f"EPOCH {i}")
+        print(f"EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
             "embeddings"]
-        loss = dot_product_loss(prefix_vector, suffix_vector)
-        # print(f"  loss: {loss}")
+        loss = cosine_similarity_loss(prefix_vector, suffix_vector)
+        print(f"  loss: {loss}")
         loss.backward(retain_graph=True)
         optimizer.step()
         rankgen_encoder.zero_grad()
@@ -104,12 +107,12 @@ def main():
     suf = ""
     for i in range(10):
         new_suf = initialize_suffix_token()
-        print(f'new initialized token: {new_suf}')
+        print(f'1. new initialized token: {new_suf}')
         suf_optim = optimize_with_new_param(pre, suf, new_suf, 100)
-        print(f'token after optim: {suf_optim}')
+        print(f'2. token after optim: {suf_optim}')
         for token in suf_optim:
             suf += token + " "
-        print(f'suffix seq: {suf}')
+        print(f'3. suffix seq: {suf}')
 
 
 main()

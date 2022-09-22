@@ -43,9 +43,9 @@ def discretize(embedding):
     """
     all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
     similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
-    print(similarities)
+    # print(similarities)
     max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
-    print(f'max index: {max_index}')
+    # print(f'max index: {max_index}')
     token = id_to_token(max_index)
     return token.replace("▁", "")
 
@@ -78,19 +78,19 @@ def optimize(prefix, suffix, epochs):
 
 def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
+    new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
-    new_suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
+    new_suffix_embedding = embedding_vector(new_suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
     learned_vector = torch.nn.Parameter(new_suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
     optimizer = torch.optim.SGD([learned_vector], lr=0.3, momentum=0.9)
     tokens = []
     for i in range(epochs):
-        print(f"EPOCH {i}")
+        # print(f"EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
             "embeddings"]
         loss = dot_product_loss(prefix_vector, suffix_vector)
-        print(f"  loss: {loss}")
+        # print(f"  loss: {loss}")
         loss.backward(retain_graph=True)
         optimizer.step()
         rankgen_encoder.zero_grad()
@@ -104,11 +104,12 @@ def main():
     suf = ""
     for i in range(10):
         new_suf = initialize_suffix_token()
-        print(new_suf)
-        suf_optim = optimize(pre, suf, new_suf, 100)
+        print(f'new initialized token: {new_suf}')
+        suf_optim = optimize_with_new_param(pre, suf, new_suf, 100)
+        print(f'token after optim: {suf_optim}')
         for token in suf_optim:
             suf += token + " "
-    print(suf)
+        print(f'suffix seq: {suf}')
 
 
 main()

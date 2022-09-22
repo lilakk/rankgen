@@ -52,7 +52,7 @@ def discretize(embedding):
 
 def initialize_suffix_token():
     all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
-    index = random.randint(0, all_embeddings.size()[0]-1)
+    index = random.randint(0, all_embeddings.size()[0] - 1)
     return discretize(all_embeddings[index])
 
 
@@ -76,18 +76,18 @@ def optimize(prefix, suffix, epochs):
     return discretize(rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index])
 
 
-def optimize_with_new_param(prefix, suffix, epochs):
+def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
-    suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
-    learned_vector = torch.nn.Parameter(suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
+    new_suffix_embedding = embedding_vector(suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
+    learned_vector = torch.nn.Parameter(new_suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
     optimizer = torch.optim.SGD([learned_vector], lr=0.3, momentum=0.9)
     tokens = []
     for i in range(epochs):
         print(f"EPOCH {i}")
         optimizer.zero_grad()
-        suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
+        suffix_vector = rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
             "embeddings"]
         loss = dot_product_loss(prefix_vector, suffix_vector)
         print(f"  loss: {loss}")
@@ -101,13 +101,14 @@ def optimize_with_new_param(prefix, suffix, epochs):
 
 def main():
     pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
-    suf = []
+    suf = ""
     for i in range(10):
         new_suf = initialize_suffix_token()
         print(new_suf)
-        suf_optim = optimize(pre, new_suf, 100)
+        suf_optim = optimize(pre, suf, new_suf, 100)
         for token in suf_optim:
-            suf.append(token)
-        print(' '.join(suf))
+            suf += token + " "
+    print(suf)
+
 
 main()

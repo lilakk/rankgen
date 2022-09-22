@@ -56,14 +56,14 @@ def initialize_suffix_token():
     return discretize(all_embeddings[index])
 
 
-def optimize(prefix, suffix, epochs):
+def optimize(prefix, suffix, new_suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
-    suffix_index = suffix_tokenized['input_ids'][0][0].item()
+    new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
+    suffix_index = new_suffix_tokenized['input_ids'][0][0].item()
     print(f'suffix index: {suffix_index}')
     for i in range(epochs):
         # print(f"EPOCH {i}")
-        suffix_vector = rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"]
+        suffix_vector = rankgen_encoder.encode(suffix + new_suffix, vectors_type="suffix")["embeddings"]
         loss = dot_product_loss(prefix_vector, suffix_vector)
         # print(f"loss: {loss}")
         loss.backward(retain_graph=True)

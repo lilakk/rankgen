@@ -77,7 +77,7 @@ def oracle(prefix):
         vocab = [id_to_token(i) for i in range(vocab_size)]
         with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
             pickle.dump(vocab, f)
-    suffix_vectors = rankgen_encoder.encode(vocab, vectors_type="suffix")["embeddings"]
+    suffix_vectors = rankgen_encoder.encode(vocab, return_cat=False, vectors_type="suffix")["embeddings"]
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     similarities = torch.nn.functional.cosine_similarity(suffix_vectors, prefix_vector)
     max_index = torch.argmax(similarities).item()

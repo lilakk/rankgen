@@ -30,7 +30,7 @@ class RankGenEncoder(torch.nn.Module):
         self.model = T5EncoderWithProjection(t5_encoder.config, t5_encoder)
         self.model.to(self.device)
 
-    def encode(self, inputs, learned_vector=None, vectors_type="prefix", verbose=False, return_input_ids=False):
+    def encode(self, inputs, learned_vector=None, vectors_type="prefix", return_cat=True, verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
         max_batch_size = self.max_batch_size
         if isinstance(inputs, str):
@@ -57,11 +57,12 @@ class RankGenEncoder(torch.nn.Module):
             if return_input_ids:
                 all_input_ids.extend(tokenized_inputs.input_ids.cpu().tolist())
         all_embeds = [embed[0] for embed in all_embeddings]
-        c = torch.cat(all_embeds, dim=0)
-        c = torch.squeeze(c)
+        if return_cat:
+            all_embeds = torch.cat(all_embeds, dim=0)
+            all_embeds = torch.squeeze(all_embeds)
 
         return {
-            "embeddings": c,
+            "embeddings": all_embeds,
             "input_ids": all_input_ids
         }
 

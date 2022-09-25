@@ -2,6 +2,7 @@ import torch
 import argparse
 import os
 import random
+import pickle
 from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
@@ -68,14 +69,19 @@ def discretize(embedding):
 
 
 def oracle(prefix):
-    vocab = []
-    for i in range(10):
-        vocab.append(id_to_token(i))
-    suffix_vectors = [rankgen_encoder.encode(suffix, vectors_type="suffix")["embeddings"] for suffix in vocab]
+    vocab_size = tokenizer.sp_model.get_piece_size()
+    if os.path.exists('/home/ella/rankgen/vocab.pkl'):
+        with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
+            vocab = pickle.load(f)
+    else:
+        vocab = [id_to_token(i) for i in range(vocab_size)]
+        with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
+            pickle.dump(vocab, f)
+    suffix_vectors = rankgen_encoder.encode(vocab, vectors_type="suffix")["embeddings"]
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    similarities = [cosine_similarity_loss(prefix_vector, suffix_vector) for suffix_vector in suffix_vectors]
-    max_index = similarities.index(max(similarities))
-    print(vocab[max_index])
+    similarities = torch.nn.functional.cosine_similarity(suffix_vectors, prefix_vector)
+    max_index = torch.argmax(similarities).item()
+    print(f'oracle word: {vocab[max_index]}')
     return
 
 

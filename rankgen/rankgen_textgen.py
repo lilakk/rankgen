@@ -70,16 +70,22 @@ def discretize(embedding):
 
 def oracle(prefix):
     vocab_size = tokenizer.sp_model.get_piece_size()
+    print(vocab_size)
     if os.path.exists('/home/ella/rankgen/vocab.pkl'):
-        with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
+        with open('/home/ella/rankgen/vocab.pkl', 'rb') as f:
             vocab = pickle.load(f)
     else:
         vocab = [id_to_token(i) for i in range(vocab_size)]
         with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
             pickle.dump(vocab, f)
+    print(len(vocab))
     suffix_vectors = rankgen_encoder.encode(vocab, return_cat=False, vectors_type="suffix")["embeddings"]
+    suffix_vectors = torch.stack(suffix_vectors, dim=0)
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    print(suffix_vectors.size())
+    print(prefix_vector.size())
     similarities = torch.nn.functional.cosine_similarity(suffix_vectors, prefix_vector)
+    print(similarities.size())
     max_index = torch.argmax(similarities).item()
     print(f'oracle word: {vocab[max_index]}')
     return

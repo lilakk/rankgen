@@ -32,7 +32,7 @@ class RankGenEncoder(torch.nn.Module):
 
     def encode(self, inputs, learned_vector=None, vectors_type="prefix", return_cat=True, verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
-        max_batch_size = self.max_batch_size
+        max_batch_size = 1
         if isinstance(inputs, str):
             inputs = [inputs]
         if vectors_type == 'prefix':

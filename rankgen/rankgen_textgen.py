@@ -19,9 +19,15 @@ rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args
 rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_model="gpt2-medium",
                                      cache_dir=args.cache_dir)
 
+rankgen_encoder.eval()
+with torch.no_grad():
+    p = 'hello world'
+    print(rankgen_encoder.encode(p, vectors_type="prefix")['embeddings'])
+
+print(rankgen_encoder.model)
+
 for name, param in rankgen_encoder.named_parameters():
-    if 'weight' in name:
-        param.requires_grad = False
+    param.requires_grad = False
 
 
 class EarlyStopping:
@@ -70,7 +76,6 @@ def discretize(embedding):
 
 def oracle(prefix):
     vocab_size = tokenizer.sp_model.get_piece_size()
-    print(vocab_size)
     if os.path.exists('/home/ella/rankgen/vocab.pkl'):
         with open('/home/ella/rankgen/vocab.pkl', 'rb') as f:
             vocab = pickle.load(f)
@@ -118,12 +123,12 @@ def optimize(prefix, suffix, new_suffix, epochs):
     return discretize(rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index])
 
 
-def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
+def optimize_with_new_param(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
+    new_suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     new_suffix_embedding = embedding_vector(new_suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
-    learned_vector = torch.nn.Parameter(new_suffix_embedding[:-1], requires_grad=True)  # don't optimize </s> token
+    learned_vector = torch.nn.Parameter(new_suffix_embedding[0:1], requires_grad=True)  # don't optimize </s> token
     optimizer = torch.optim.Adam([learned_vector], lr=0.01)
     losses = []
     tokens = []
@@ -132,7 +137,7 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
         print(f"  EPOCH {i}")
         optimizer.zero_grad()
         suffix_vector = \
-            rankgen_encoder.encode(suffix + new_suffix, learned_vector=learned_vector, vectors_type="suffix")[
+            rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
                 "embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
         print(f"    loss: {loss}")
@@ -146,6 +151,8 @@ def optimize_with_new_param(prefix, suffix, new_suffix, epochs):
         losses.append(loss)
         rankgen_encoder.zero_grad()
         torch.cuda.empty_cache()
+        print(learned_vector)
+    print(learned_vector.size())
     for j in range(learned_vector.size()[0]):
         tokens.append(discretize(learned_vector[j]))
     return tokens
@@ -156,12 +163,12 @@ def main():
     oracle(pre)
     suf = ""
     for i in range(1):
-        new_suf = initialize_suffix_token()
-        print(f'new token: {new_suf}')
-        suf_optim = optimize_with_new_param(pre, suf, new_suf, 10000)
-        print(f'token after optim: {suf_optim}')
-        for token in suf_optim:
-            suf += token + " "
+        #suf = initialize_suffix_token()
+        #print(f'new token: {suf}')
+        #suf_optim = optimize_with_new_param(pre, suf, 500)
+        #print(f'token after optim: {suf_optim}')
+        #for token in suf_optim:
+        #    suf += " " + token
         print(f'suffix seq: {suf}')
 
 

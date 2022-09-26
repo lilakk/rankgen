@@ -3,6 +3,8 @@ import argparse
 import os
 import random
 import pickle
+import tqdm
+import time
 from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
@@ -20,10 +22,7 @@ rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_m
                                      cache_dir=args.cache_dir)
 
 rankgen_encoder.eval()
-print(rankgen_encoder.model.t5_encoder.training)
-with torch.no_grad():
-    p = 'hello world'
-    print(rankgen_encoder.encode(p, vectors_type="prefix")['embeddings'])
+print(f't5_encoder is in training mode: {rankgen_encoder.model.t5_encoder.training}')
 
 for name, param in rankgen_encoder.named_parameters():
     param.requires_grad = False
@@ -66,14 +65,15 @@ def discretize(embedding):
     Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
     """
     all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
-    similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
-    # print(similarities)
+    # similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
+    similarities = torch.nn.functional.cosine_similarity(all_embeddings[:tokenizer.sp_model.get_piece_size(),:], embedding.unsqueeze(dim=0))
+    print(similarities)
     max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
     token = id_to_token(max_index)
     return token
 
 
-def oracle(prefix):
+def oracle_prefix(prefix, suffix_len=50):
     vocab_size = tokenizer.sp_model.get_piece_size()
     if os.path.exists('/home/ella/rankgen/vocab.pkl'):
         with open('/home/ella/rankgen/vocab.pkl', 'rb') as f:
@@ -84,16 +84,58 @@ def oracle(prefix):
             pickle.dump(vocab, f)
     if os.path.exists('/home/ella/rankgen/vocab_suffix_vectors.pkl'):
         with open('/home/ella/rankgen/vocab_suffix_vectors.pkl', 'rb') as f:
-            suffix_vectors = pickle.load(f)
+            vocab_vectors = pickle.load(f)
     else:
-        suffix_vectors = rankgen_encoder.encode(vocab, return_cat=False, vectors_type="suffix")["embeddings"]
-        suffix_vectors = torch.stack(suffix_vectors, dim=0)
+        vocab_vectors = rankgen_encoder.encode(vocab, return_squeeze=False, vectors_type="suffix")["embeddings"]
+        vocab_vectors = torch.stack(vocab_vectors, dim=0)
         with open('/home/ella/rankgen/vocab_suffix_vectors.pkl', 'wb') as f:
-            pickle.dump(suffix_vectors, f)
+            pickle.dump(vocab_vectors, f)
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    similarities = torch.nn.functional.cosine_similarity(suffix_vectors, prefix_vector)
-    max_index = torch.argmax(similarities).item()
-    print(f'oracle word: {vocab[max_index]}')
+    for i in range(0, suffix_len):
+        similarities = torch.nn.functional.cosine_similarity(vocab_vectors, prefix_vector)
+        max_index = torch.argmax(similarities).item()
+        word = vocab[max_index]
+        prefix = prefix + ' ' + word
+        prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+        print(prefix)
+    return
+
+
+def oracle(prefix, suffix_len=50):
+    vocab_size = tokenizer.sp_model.get_piece_size()
+    if os.path.exists('/home/ella/rankgen/vocab.pkl'):
+        with open('/home/ella/rankgen/vocab.pkl', 'rb') as f:
+            vocab = pickle.load(f)
+    else:
+        vocab = [id_to_token(i) for i in range(vocab_size)]
+        with open('/home/ella/rankgen/vocab.pkl', 'wb') as f:
+            pickle.dump(vocab, f)
+    if os.path.exists('/home/ella/rankgen/vocab_suffix_vectors.pkl'):
+        with open('/home/ella/rankgen/vocab_suffix_vectors.pkl', 'rb') as f:
+            vocab_vectors = pickle.load(f)
+    else:
+        vocab_vectors = rankgen_encoder.encode(vocab, return_squeeze=False, vectors_type="suffix")["embeddings"]
+        vocab_vectors = torch.stack(vocab_vectors, dim=0)
+        with open('/home/ella/rankgen/vocab_suffix_vectors.pkl', 'wb') as f:
+            pickle.dump(vocab_vectors, f)
+    prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
+    words = ''
+    for i in range(0, suffix_len):
+        print(f'EPOCH {i}')
+        if i == 0:
+            similarities = torch.nn.functional.cosine_similarity(vocab_vectors, prefix_vector)
+            max_index = torch.argmax(similarities).item()
+            word = vocab[max_index]
+            words = word
+        else:
+            suffixes = [words + ' ' + v for v in vocab]
+            suffix_vectors = rankgen_encoder.encode(suffixes, return_squeeze=False, vectors_type="suffix")["embeddings"]
+            suffix_vectors = torch.stack(suffix_vectors, dim=0)
+            similarities = torch.nn.functional.cosine_similarity(suffix_vectors, prefix_vector)
+            max_index = torch.argmax(similarities).item()
+            word = vocab[max_index]
+            words += ' ' + word
+        print(words)
     return
 
 
@@ -103,43 +145,24 @@ def initialize_suffix_token():
     return discretize(all_embeddings[index])
 
 
-def optimize(prefix, suffix, new_suffix, epochs):
-    prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
-    new_suffix_tokenized = rankgen_encoder.tokenizer(new_suffix, return_tensors="pt", padding=True)
-    suffix_index = new_suffix_tokenized['input_ids'][0][0].item()
-    for i in range(epochs):
-        print(f"EPOCH {i}")
-        suffix_vector = rankgen_encoder.encode(suffix + new_suffix, vectors_type="suffix")["embeddings"]
-        loss = dot_product_loss(prefix_vector, suffix_vector)
-        print(f"loss: {loss}")
-        loss.backward(retain_graph=True)
-        grad_emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index]
-        with torch.no_grad():
-            emb = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index]
-            new_val = emb - grad_emb
-            rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight[suffix_index] = new_val
-        rankgen_encoder.zero_grad()
-    return discretize(rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight.grad[suffix_index])
-
-
-def optimize_with_new_param(prefix, suffix, epochs):
+def optimize(prefix, suffix, epochs):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     new_suffix_tokenized = rankgen_encoder.tokenizer(suffix, return_tensors="pt", padding=True)
     embedding_vector = rankgen_encoder.model.t5_encoder.encoder.embed_tokens
     new_suffix_embedding = embedding_vector(new_suffix_tokenized['input_ids'][0].to(rankgen_encoder.device))
     learned_vector = torch.nn.Parameter(new_suffix_embedding[0:1], requires_grad=True)  # don't optimize </s> token
-    optimizer = torch.optim.Adam([learned_vector], lr=0.01)
+    optimizer = torch.optim.Adam([learned_vector], lr=0.05)
     losses = []
     tokens = []
-    early_stopping = EarlyStopping(tolerance=5, min_delta=0.001)
+    early_stopping = EarlyStopping(tolerance=5, min_delta=0.01)
     for i in range(epochs):
-        print(f"  EPOCH {i}")
         optimizer.zero_grad()
-        suffix_vector = \
-            rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")[
-                "embeddings"]
+        suffix_vector = rankgen_encoder.encode(suffix, learned_vector=learned_vector, vectors_type="suffix")["embeddings"]
         loss = cosine_similarity_loss(prefix_vector, suffix_vector)
-        print(f"    loss: {loss}")
+        if i % 100 == 0:
+            print(f"  EPOCH {i}")
+            print(f"    loss: {loss}")
+            print(learned_vector)
         loss.backward()
         optimizer.step()
         if len(losses) > 0:
@@ -150,25 +173,28 @@ def optimize_with_new_param(prefix, suffix, epochs):
         losses.append(loss)
         rankgen_encoder.zero_grad()
         torch.cuda.empty_cache()
-        print(learned_vector)
-    print(learned_vector.size())
     for j in range(learned_vector.size()[0]):
         tokens.append(discretize(learned_vector[j]))
     return tokens
 
 
 def main():
-    pre = "For two years, schools and researchers have wrestled with pandemic-era learning setbacks."
+    pre = "It echoed similar parallels drawn by the Church of Scientology itself, which until then had received scant notice, \
+    and was followed by lobbying efforts of Scientology celebrities in Washington. U.S. Department of State spokesman Nicholas \
+    Burns rejected the Nazi comparisons in the open letter as \"outrageous\" and distanced the U.S. government from Nazi comparisons \
+    made by the Church of Scientology, saying, \"We have criticized the Germans on this, but we aren't going to support the \
+    Scientologists' terror tactics against the German government.\" Chancellor Kohl, commenting on the letter, said that those who \
+    signed it \"don't know a thing about Germany and don't want to know.\" German officials argued that \"the whole fuss was cranked \
+    up by the Scientologists to achieve what we won't give them: tax-exempt status as a religion. This is intimidation, pure and simple.\""
     oracle(pre)
-    suf = ""
-    for i in range(1):
-        # suf = initialize_suffix_token()
-        # print(f'new token: {suf}')
-        # suf_optim = optimize_with_new_param(pre, suf, 500)
-        # print(f'token after optim: {suf_optim}')
-        # for token in suf_optim:
-        #    suf += " " + token
-        print(f'suffix seq: {suf}')
+    # for i in range(1):
+    #     suf = initialize_suffix_token()
+    #     print(f'new token: {suf}')
+    #     suf_optim = optimize(pre, suf, 2000)
+    #     print(f'token after optim: {suf_optim}')
+    #     for token in suf_optim:
+    #        suf += " " + token
+    #     print(f'suffix seq: {suf}')
 
 
 main()

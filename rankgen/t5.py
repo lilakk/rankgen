@@ -1841,6 +1841,7 @@ class T5EncoderWithProjection(T5PreTrainedModel):
     def __init__(self, config, encoder):
         super().__init__(config, encoder)
         self.t5_encoder = encoder
+        print(f't5 class: {self.t5_encoder.training}')
         self.projection = nn.Linear(config.d_model, config.d_model, bias=False)
         # Initialize weights and apply final processing
         self.post_init()

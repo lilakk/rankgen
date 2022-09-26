@@ -20,11 +20,11 @@ rankgen_generator = RankGenGenerator(rankgen_encoder=rankgen_encoder, language_m
                                      cache_dir=args.cache_dir)
 
 rankgen_encoder.eval()
+print(rankgen_encoder.model.t5_encoder.training)
 with torch.no_grad():
     p = 'hello world'
     print(rankgen_encoder.encode(p, vectors_type="prefix")['embeddings'])
 
-print(rankgen_encoder.model)
 
 for name, param in rankgen_encoder.named_parameters():
     param.requires_grad = False

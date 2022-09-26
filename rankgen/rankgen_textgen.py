@@ -65,9 +65,8 @@ def discretize(embedding):
     Given an optimized embedding, find it's nearest neighbor in the embedding space and convert to discrete tokens.
     """
     all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
-    # similarities = torch.matmul(embedding, all_embeddings.t()).squeeze(dim=0)
+    # similarities = torch.matmul(embedding, all_embeddings[:tokenizer.sp_model.get_piece_size(),:].t()).squeeze(dim=0)
     similarities = torch.nn.functional.cosine_similarity(all_embeddings[:tokenizer.sp_model.get_piece_size(),:], embedding.unsqueeze(dim=0))
-    print(similarities)
     max_index = torch.argmax(similarities).item()  # find most similar word embedding in embedding table
     token = id_to_token(max_index)
     return token
@@ -121,6 +120,7 @@ def oracle(prefix, suffix_len=50):
     prefix_vector = rankgen_encoder.encode(prefix, vectors_type="prefix")["embeddings"]
     words = ''
     for i in range(0, suffix_len):
+        start = time.time()
         print(f'EPOCH {i}')
         if i == 0:
             similarities = torch.nn.functional.cosine_similarity(vocab_vectors, prefix_vector)
@@ -135,14 +135,18 @@ def oracle(prefix, suffix_len=50):
             max_index = torch.argmax(similarities).item()
             word = vocab[max_index]
             words += ' ' + word
-        print(words)
+        end = time.time()
+        print(f'  time taken: {end - start}')
+        print(f'  {words}')
     return
 
 
 def initialize_suffix_token():
-    all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
-    index = random.randint(0, all_embeddings.size()[0] - 1)
-    return discretize(all_embeddings[index])
+    # all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
+    # index = random.randint(0, all_embeddings.size()[0] - 1)
+    # return discretize(all_embeddings[index])
+    r = torch.rand(2048).to(rankgen_encoder.device)
+    return discretize(r)
 
 
 def optimize(prefix, suffix, epochs):
@@ -186,15 +190,20 @@ def main():
     Scientologists' terror tactics against the German government.\" Chancellor Kohl, commenting on the letter, said that those who \
     signed it \"don't know a thing about Germany and don't want to know.\" German officials argued that \"the whole fuss was cranked \
     up by the Scientologists to achieve what we won't give them: tax-exempt status as a religion. This is intimidation, pure and simple.\""
-    oracle(pre)
-    # for i in range(1):
-    #     suf = initialize_suffix_token()
-    #     print(f'new token: {suf}')
-    #     suf_optim = optimize(pre, suf, 2000)
-    #     print(f'token after optim: {suf_optim}')
-    #     for token in suf_optim:
-    #        suf += " " + token
-    #     print(f'suffix seq: {suf}')
+    # oracle(pre)
+    for i in range(1):
+        suf = initialize_suffix_token()
+        print(f'new token: {suf}')
+        suf_optim = optimize(pre, suf, 2000)
+        print(f'token after optim: {suf_optim}')
+        for token in suf_optim:
+           suf += " " + token
+        print(f'suffix seq: {suf}')
+    # emb = all_embeddings[100]
+    # print(emb)
+    # emb = emb * 1.4
+    # print(emb)
+    # print(discretize(emb))
 
 
 main()

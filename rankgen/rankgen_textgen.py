@@ -25,7 +25,6 @@ with torch.no_grad():
     p = 'hello world'
     print(rankgen_encoder.encode(p, vectors_type="prefix")['embeddings'])
 
-
 for name, param in rankgen_encoder.named_parameters():
     param.requires_grad = False
 
@@ -163,11 +162,11 @@ def main():
     oracle(pre)
     suf = ""
     for i in range(1):
-        #suf = initialize_suffix_token()
-        #print(f'new token: {suf}')
-        #suf_optim = optimize_with_new_param(pre, suf, 500)
-        #print(f'token after optim: {suf_optim}')
-        #for token in suf_optim:
+        # suf = initialize_suffix_token()
+        # print(f'new token: {suf}')
+        # suf_optim = optimize_with_new_param(pre, suf, 500)
+        # print(f'token after optim: {suf_optim}')
+        # for token in suf_optim:
         #    suf += " " + token
         print(f'suffix seq: {suf}')
 

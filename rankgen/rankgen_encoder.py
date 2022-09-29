@@ -29,7 +29,7 @@ class RankGenEncoder(torch.nn.Module):
         self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
         self.model.to(self.device)
 
-    def encode(self, inputs, learned_vector=None, vectors_type="prefix", return_squeeze=True, verbose=False, return_input_ids=False):
+    def encode(self, inputs, learned_embed=None, vectors_type="prefix", return_squeeze=True, verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
         max_batch_size = 1
         if isinstance(inputs, str):
@@ -48,8 +48,8 @@ class RankGenEncoder(torch.nn.Module):
             tokenized_inputs = tokenizer(inputs[i:i + max_batch_size], return_tensors="pt", padding=True)
             for k, v in tokenized_inputs.items():
                 tokenized_inputs[k] = v[:, :max_length]
-            if learned_vector is not None:
-                tokenized_inputs['learned_vector'] = learned_vector
+            if learned_embed is not None:
+                tokenized_inputs['learned_embed'] = learned_embed
             tokenized_inputs = tokenized_inputs.to(self.device)
             batch_embeddings = self.model(**tokenized_inputs)
             all_embeddings.append(batch_embeddings)

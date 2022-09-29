@@ -1,0 +1,95 @@
+t5_encoder is in training mode: False
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: quette
+EPOCH 0
+  l2_loss: 8.337158203125
+  suffix vector: tensor([ 0.0930,  0.0989, -0.1791,  ..., -0.2782,  0.2098,  0.0315],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.337158203125
+  l2 dist from vocab: 548.7413940429688
+  learned embed: Parameter containing:
+tensor([[-2.2087, -3.9588, -0.8389,  ..., 35.9222,  2.2363, -2.7004]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 7.138942718505859
+  suffix vector: tensor([ 0.0153,  0.1010, -0.1319,  ..., -0.2137,  0.1755,  0.1126],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 7.138942718505859
+  l2 dist from vocab: 567.6736450195312
+  learned embed: Parameter containing:
+tensor([[ 0.2881, -2.0030,  0.0951,  ..., 23.6262,  6.5369,  0.9115]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  l2_loss: 6.637731075286865
+  suffix vector: tensor([-0.0176,  0.0786, -0.1318,  ..., -0.2088,  0.1497,  0.1550],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 6.637731075286865
+  l2 dist from vocab: 572.4507446289062
+  learned embed: Parameter containing:
+tensor([[-0.3648, -4.1075, -5.2282,  ..., 15.6581,  5.0738, -0.3975]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  l2_loss: 5.869058609008789
+  suffix vector: tensor([-0.0218,  0.0660, -0.1238,  ..., -0.2094,  0.1856,  0.2116],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 5.869058609008789
+  l2 dist from vocab: 577.9822998046875
+  learned embed: Parameter containing:
+tensor([[ -2.2068, -11.9355,  -1.9454,  ...,  11.3726,   5.0463,  -5.7069]],
+       device='cuda:0', requires_grad=True)
+token after optim: Its
+suffix seq:  Its
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: împlin
+EPOCH 0
+  l2_loss: 8.350878715515137
+  suffix vector: tensor([ 0.0904,  0.1040, -0.1806,  ..., -0.2812,  0.2108,  0.0368],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.350878715515137
+  l2 dist from vocab: 596.155029296875
+  learned embed: Parameter containing:
+tensor([[18.9217,  0.6498,  1.3579,  ...,  6.9843, -5.8963, -2.3573]],
+       device='cuda:0', requires_grad=True)
+STOPPING AT EPOCH 382
+token after optim: împlin
+suffix seq:  Its împlin
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: weilige
+EPOCH 0
+  l2_loss: 8.337158203125
+  suffix vector: tensor([ 0.0930,  0.0989, -0.1791,  ..., -0.2782,  0.2098,  0.0315],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.337158203125
+  l2 dist from vocab: 548.7413940429688
+  learned embed: Parameter containing:
+tensor([[-2.2087, -3.9588, -0.8389,  ..., 35.9222,  2.2363, -2.7004]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 7.138942718505859
+  suffix vector: tensor([ 0.0153,  0.1010, -0.1319,  ..., -0.2137,  0.1755,  0.1126],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 7.138942718505859
+  l2 dist from vocab: 567.6736450195312
+  learned embed: Parameter containing:
+tensor([[ 0.2881, -2.0030,  0.0951,  ..., 23.6262,  6.5369,  0.9115]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  l2_loss: 6.637731075286865
+  suffix vector: tensor([-0.0176,  0.0786, -0.1318,  ..., -0.2088,  0.1497,  0.1550],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 6.637731075286865
+  l2 dist from vocab: 572.4507446289062
+  learned embed: Parameter containing:
+tensor([[-0.3648, -4.1075, -5.2282,  ..., 15.6581,  5.0738, -0.3975]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  l2_loss: 5.869058609008789
+  suffix vector: tensor([-0.0218,  0.0660, -0.1238,  ..., -0.2094,  0.1856,  0.2116],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 5.869058609008789
+  l2 dist from vocab: 577.9822998046875
+  learned embed: Parameter containing:
+tensor([[ -2.2068, -11.9355,  -1.9454,  ...,  11.3726,   5.0463,  -5.7069]],
+       device='cuda:0', requires_grad=True)
+token after optim: Its
+suffix seq:  Its împlin Its

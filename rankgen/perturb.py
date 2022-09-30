@@ -18,6 +18,8 @@ from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
 from checklist.editor import Editor
 from checklist.perturb import Perturb
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from utils import execute_gpt2, cudafy_tokens
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -36,6 +38,12 @@ rankgen_encoder.eval()
 
 for name, param in rankgen_encoder.named_parameters():
     param.requires_grad = False
+
+tokenizer = GPT2Tokenizer.from_pretrained(f"gpt2-{args.model_size}")
+tokenizer.pad_token = tokenizer.eos_token
+model = GPT2LMHeadModel.from_pretrained(f"gpt2-{args.model_size}")
+model.cuda()
+model.eval()
 
 f = open("rankgen_data/test_examples/t5_xl_all.jsonl", "r")
 data = [json.loads(x) for x in f.read().strip().split("\n")]
@@ -209,6 +217,22 @@ def negate(n=1):
                 new_suffix = ' '.join(suffix_sents)
                 negated.append({'prefix':prefix,'suffix':suffix, 'suffix_neg':new_suffix, 'suffix_neg_flag':neg_flag, 'negative':negative})
     return negated
+
+
+def compute_gpt2(data):
+    sequences = []
+    for dd in data:
+        sequences.append()
+    with torch.no_grad():
+        inputs = cudafy_tokens(tokenizer(sequences, return_tensors="pt", padding=True, truncation=True))
+        outputs = model(**inputs)
+        out_log_probs = torch.nn.functional.log_softmax(outputs["logits"], dim=-1)
+        gold_log_probs = torch.gather(out_log_probs[:, :-1, :], 2, inputs['input_ids'][:, 1:].unsqueeze(-1)).squeeze()
+        token_mask = inputs['input_ids'][:, 1:] != tokenizer.pad_token_id
+        gold_log_probs = gold_log_probs * token_mask
+        perplexities = torch.exp(-1 * gold_log_probs.sum(dim=1) / token_mask.sum(dim=1))
+        perplexities = perplexities.cpu().tolist()
+    return perplexities
 
 
 def main():

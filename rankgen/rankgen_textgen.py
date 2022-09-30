@@ -201,7 +201,7 @@ def initialize_suffix_token():
     # all_embeddings = rankgen_encoder.model.t5_encoder.encoder.embed_tokens.weight
     # index = random.randint(0, all_embeddings.size()[0] - 1)
     # return discretize(all_embeddings[index])
-    return id_to_token(random.randint(0, tokenizer.sp_model.get_piece_size()+1))
+    return id_to_token(random.randint(0, tokenizer.sp_model.get_piece_size()-1))
     # r = torch.rand(2048).to(rankgen_encoder.device)
 
 

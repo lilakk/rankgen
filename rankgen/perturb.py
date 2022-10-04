@@ -13,6 +13,8 @@ import stanza
 import spacy
 import nltk
 import checklist
+import pdb
+import numpy as np
 from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
@@ -26,6 +28,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 parser = argparse.ArgumentParser()
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--cache_dir', default=None, type=str)
+parser.add_argument('--dataset', default='rankgen_data/t5_xl_all_domains_pg19_hard.jsonl', type=str)
 
 args = parser.parse_args()
 
@@ -39,17 +42,17 @@ rankgen_encoder.eval()
 for name, param in rankgen_encoder.named_parameters():
     param.requires_grad = False
 
-tokenizer = GPT2Tokenizer.from_pretrained(f"gpt2-{args.model_size}")
+tokenizer = GPT2Tokenizer.from_pretrained(f"gpt2-medium")
 tokenizer.pad_token = tokenizer.eos_token
-model = GPT2LMHeadModel.from_pretrained(f"gpt2-{args.model_size}")
+model = GPT2LMHeadModel.from_pretrained(f"gpt2-medium")
 model.cuda()
 model.eval()
 
-f = open("rankgen_data/test_examples/t5_xl_all.jsonl", "r")
-data = [json.loads(x) for x in f.read().strip().split("\n")]
-all_prefixes = [data[i]['inputs']['inputs_pretokenized'] for i in range(len(data))]
-all_suffixes = [data[i]['inputs']['targets_pretokenized'] for i in range(len(data))]
-all_negatives = [data[i]['inputs']['negatives_pretokenized'] for i in range(len(data))]
+f = open(args.dataset, "r")
+data = [json.loads(x) for x in f.read().strip().split("\n")][0:2000]
+all_prefixes = [data[i]['prefix'] for i in range(len(data))]
+all_suffixes = [data[i]['suffix'] for i in range(len(data))]
+all_negatives = [data[i]['negatives'] for i in range(len(data))]
 
 nlp = stanza.Pipeline(lang='en', processors='tokenize,ner')
 
@@ -63,14 +66,14 @@ def score(prefix, suffix, ptb_suffix):
     return gt_score, ptb_score
 
 
-def swap_entities():
+def swap_entities(n=1):
     valid_ne = ['PERSON', 'GPE', 'NORP', 'ORG', 'FAC', 'LOC']
     ne_swapped = []
     suffix_ne = 0
     all_entities_suffix = {}
 
     for tup in data:
-        suffix = tup['inputs']['targets_pretokenized']
+        suffix = tup['prefix']
         doc_suffix = nlp(suffix)
         for ent in doc_suffix.ents:
             if ent.type not in all_entities_suffix:
@@ -79,55 +82,68 @@ def swap_entities():
                 all_entities_suffix[ent.type].append(ent.text)
 
     for tup in data:
-        prefix = tup['inputs']['inputs_pretokenized']
-        suffix = tup['inputs']['targets_pretokenized']
-        negative = tup['inputs']['negatives_pretokenized']
+        prefix = tup['prefix']
+        suffix = tup['suffix']
+        negatives = tup['negatives']
         doc_suffix = nlp(suffix)
-        suffix_candidates = []
         suffix_flag = 0
+        suffix_candidates = []
         
         # choose candidates for swapping
         for ent in doc_suffix.ents: 
             entity = (ent.text, ent.type, ent.start_char, ent.end_char)
             if ent.type in valid_ne and entity not in suffix_candidates:
-                suffix_candidates.append(entity)
+                suffix_candidates.append({'entity': entity, 'swapped': False})
+        
+        n_cands = len(suffix_candidates)
+        if n_cands < n:
+            continue
+        
+        new_suffix = suffix
+        while suffix_flag < n:
+            rand_idx = random.randint(0, n_cands-1)
+            if suffix_candidates[rand_idx]['swapped']:
+                continue
+            cand = suffix_candidates[rand_idx]['entity']
+            cand_txt = cand[0]
+            label = cand[1]
+            begin = cand[2]
+            end = cand[3]
+            suffix_candidates[rand_idx]['swapped'] = True
 
-        # if there are candidates swap ONE for same entity type
-        if suffix_candidates != []:
-            rand_idx = random.randint(0, len(suffix_candidates)-1)
-            cand = suffix_candidates[rand_idx]
-            cand_txt = suffix_candidates[rand_idx][0]
-            label = suffix_candidates[rand_idx][1]
-            begin = suffix_candidates[rand_idx][2]
-            end = suffix_candidates[rand_idx][3]
+            if all([l == cand_txt for l in all_entities_suffix[label]]):
+                continue
 
-            while suffix_flag != 1:
+            prev_flag = suffix_flag
+            while suffix_flag == prev_flag:
                 rand_idx = random.randint(0, len(all_entities_suffix[label])-1)
                 if  all_entities_suffix[label][rand_idx] != cand_txt:
                     new_ne = all_entities_suffix[label][rand_idx]
-                    suffix_flag = 1
-                    suffix_ne+=1
+                    suffix_flag += 1
                     if begin == 0:
-                        new_suffix = new_ne + suffix[end:]
+                        new_suffix = new_ne + new_suffix[end:]
                     elif end == len(suffix) - 1:
-                        new_suffix = suffix[:begin] + new_ne
+                        new_suffix = new_suffix[:begin] + new_ne
                     else:
-                        new_suffix = suffix[:begin] + new_ne + suffix[end:]
-        else:
-            new_suffix = ''
-        ne_swapped.append({'prefix':prefix,'suffix':suffix, 'suffix_ne':new_suffix, 'suffix_ne_flag':suffix_flag, 'negative':negative})
+                        new_suffix = new_suffix[:begin] + new_ne + new_suffix[end:]
+                diff = len(new_ne) - len(cand_txt)
+                for e in suffix_candidates:
+                    ent = e['entity']
+                    if ent[2] > end:
+                        e['entity'] = (ent[0], ent[1], ent[2]+diff, ent[3]+diff)
+        ne_swapped.append({'prefix':prefix,'suffix':suffix, 'suffix_ptb':new_suffix, 'suffix_ptb_flag':suffix_flag, 'negatives':negatives})
     return ne_swapped
 
 
 def swap_sents():
     sent_swapped = []
     for tup in data:
-        prefix = tup['inputs']['inputs_pretokenized']
-        suffix = tup['inputs']['targets_pretokenized']
-        negative = tup['inputs']['negatives_pretokenized']
+        prefix = tup['prefix']
+        suffix = tup['suffix']
+        negatives = tup['negatives']
         doc_suffix = nlp(suffix)
         suffix_sents = [sent.text for sent in doc_suffix.sentences]
-        sent_flag = False
+        sent_flag = 0
         if len(suffix_sents) > 1:
             rand_1 = random.randint(0, len(suffix_sents)-1)
             rand_2 = rand_2 = random.randint(0, len(suffix_sents)-1)
@@ -138,30 +154,31 @@ def swap_sents():
             suffix_sents[rand_1] = s2
             suffix_sents[rand_2] = s1
             new_suffix = ' '.join(suffix_sents)
-            sent_flag = True
+            sent_flag = 1
         else:
             new_suffix = ''
-        sent_swapped.append({'prefix':prefix,'suffix':suffix, 'suffix_sent':new_suffix, 'suffix_sent_flag':sent_flag, 'negative':negative})
+        sent_swapped.append({'prefix':prefix,'suffix':suffix, 'suffix_ptb':new_suffix, 'suffix_ptb_flag':sent_flag, 'negatives':negatives})
     return sent_swapped
 
 
 def insert_sent():
     sent_inserted = []
     for tup in data:
-        prefix = tup['inputs']['inputs_pretokenized']
-        suffix = tup['inputs']['targets_pretokenized']
-        negative = tup['inputs']['negatives_pretokenized']
+        prefix = tup['prefix']
+        suffix = tup['suffix']
+        negatives = tup['negatives']
         doc_suffix = nlp(suffix)
+        r = random.randint(0, len(negatives)-1)
+        negative = negatives[r]
         doc_negative = nlp(negative)
         suffix_sents = [sent.text for sent in doc_suffix.sentences]
         negative_sents = [sent.text for sent in doc_negative.sentences]
-        insert_flag = False
         rand_suf = random.randint(0, len(suffix_sents))
         rand_neg = random.randint(0, len(negative_sents)-1)
         suffix_sents.insert(rand_suf, negative_sents[rand_neg])
         new_suffix = ' '.join(suffix_sents)
-        insert_flag = True
-        sent_inserted.append({'prefix':prefix,'suffix':suffix, 'suffix_insert':new_suffix, 'suffix_insert_flag':insert_flag, 'negative':negative})
+        insert_flag = 1
+        sent_inserted.append({'prefix':prefix,'suffix':suffix, 'suffix_ptb':new_suffix, 'suffix_ptb_flag':insert_flag, 'negatives':negatives})
     return sent_inserted
 
 
@@ -192,9 +209,9 @@ def antonym_adjective(sent):
 def negate(n=1):
     negated = []
     for tup in data:
-        prefix = tup['inputs']['inputs_pretokenized']
-        suffix = tup['inputs']['targets_pretokenized']
-        negative = tup['inputs']['negatives_pretokenized']
+        prefix = tup['prefix']
+        suffix = tup['suffix']
+        negatives = tup['negatives']
         doc_suffix = nlp(suffix)
         suffix_sents = [sent.text for sent in doc_suffix.sentences]
         if n > len(suffix_sents):
@@ -206,23 +223,20 @@ def negate(n=1):
             while rand in indices:
                 rand = random.randint(0, len(suffix_sents)-1)
             indicies.append(rand)
-        neg_flag = False
+        neg_flag = 0
         for i in indices:
             sent, flag = antonym_adjective(suffix_sents[i])
             if flag == 0:
-                negated.append({'prefix':prefix,'suffix':suffix, 'suffix_neg':'', 'suffix_neg_flag':neg_flag, 'negative':negative})
+                new_suffix = ''
             else:
-                neg_flag = True
+                neg_flag = 1
                 suffix_sents[i] = sent
                 new_suffix = ' '.join(suffix_sents)
-                negated.append({'prefix':prefix,'suffix':suffix, 'suffix_neg':new_suffix, 'suffix_neg_flag':neg_flag, 'negative':negative})
+            negated.append({'prefix':prefix,'suffix':suffix, 'suffix_ptb':new_suffix, 'suffix_ptb_flag':neg_flag, 'negatives':negatives})
     return negated
 
 
-def compute_gpt2(data):
-    sequences = []
-    for dd in data:
-        sequences.append()
+def compute_gpt2(sequences):
     with torch.no_grad():
         inputs = cudafy_tokens(tokenizer(sequences, return_tensors="pt", padding=True, truncation=True))
         outputs = model(**inputs)
@@ -235,106 +249,47 @@ def compute_gpt2(data):
     return perplexities
 
 
-def main():
-    print("NEGATION")
+def evaluate(task):
     pct = []
     diff = []
-    for i in range(5):
-        neg_data = negate(n=1)
-        neg_bools = []
-        neg_diff = []
-        j = 0
-        for d in neg_data:
-            if d['suffix_neg_flag'] > 0:
-                j += 1
-                gt_score, ptb_score = score(d['prefix'], d['suffix'], d['suffix_neg'])
-                neg_bools.append(gt_score > ptb_score)
-                neg_diff.append(gt_score - ptb_score)
-        p = sum(neg_bools) / j
-        d = sum(neg_diff) / j
-        pct.append(p)
-        diff.append(d)
-        print(f'  # total instances: {len(data)}')
-        print(f'  # perturbed instances: {j}')
-        print(f'  # times gt > ptb: {p}')
-        print(f'  average gt - ptb: {d}')
-    print(f'avg pct: {sum(pct) / len(pct)}')
-    print(f'avg diff: {sum(diff) / len(diff)}')
-
-    # print("ENTITY SWAPPING")
-    # pct = []
-    # diff = []
-    # for i in range(5):
-    #     entity_data = swap_entities()
-    #     entity_bools = []
-    #     entity_diff = []
-    #     n = 0
-    #     for d in entity_data:
-    #         if d['suffix_ne_flag'] > 0:
-    #             n += 1
-    #             gt_score, ptb_score = score(d['prefix'], d['suffix'], d['suffix_ne'])
-    #             entity_bools.append(gt_score > ptb_score)
-    #             entity_diff.append(gt_score - ptb_score)
-    #     p = sum(entity_bools) / n
-    #     d = sum(entity_diff) / n
-    #     pct.append(p)
-    #     diff.append(d)
-    #     print(f'  # total instances: {len(data)}')
-    #     print(f'  # perturbed instances: {n}')
-    #     print(f'  # times gt > ptb: {p}')
-    #     print(f'  average gt - ptb: {d}')
-    # print(f'avg pct: {sum(pct) / len(pct)}')
-    # print(f'avg diff: {sum(diff) / len(diff)}')
-
-    # print("SENTENCE SWAPPING")
-    # pct = []
-    # diff = []
-    # for i in range(5):
-    #     sent_data = swap_sents()
-    #     sent_bools = []
-    #     sent_diff = []
-    #     m = 0
-    #     for d in sent_data:
-    #         if d['suffix_sent_flag']:
-    #             m += 1
-    #             gt_score, ptb_score = score(d['prefix'], d['suffix'], d['suffix_sent'])
-    #             sent_bools.append(gt_score > ptb_score)
-    #             sent_diff.append(gt_score - ptb_score)
-    #     p = sum(sent_bools) / m
-    #     d = sum(sent_diff) / m
-    #     pct.append(p)
-    #     diff.append(d)
-    #     print(f'  # total instances: {len(data)}')
-    #     print(f'  # perturbed instances: {m}')
-    #     print(f'  # times gt > ptb: {p}')
-    #     print(f'  average gt - ptb: {d}')
-    # print(f'avg pct: {sum(pct) / len(pct)}')
-    # print(f'avg diff: {sum(diff) / len(diff)}')
-
-    # print("SENTENCE INSERTION")
-    # pct = []
-    # diff = []
-    # for i in range(5):
-    #     insertion_data = insert_sent()
-    #     insertion_bools = []
-    #     insertion_diff = []
-    #     k = 0
-    #     for d in insertion_data:
-    #         if d['suffix_insert_flag']:
-    #             k += 1
-    #             gt_score, ptb_score = score(d['prefix'], d['suffix'], d['suffix_insert'])
-    #             insertion_bools.append(gt_score > ptb_score)
-    #             insertion_diff.append(gt_score - ptb_score)
-    #     p = sum(insertion_bools) / k
-    #     d = sum(insertion_diff) / k
-    #     pct.append(p)
-    #     diff.append(d)
-    #     print(f'  # total instances: {len(data)}')
-    #     print(f'  # perturbed instances: {k}')
-    #     print(f'  # times gt > ptb: {p}')
-    #     print(f'  average gt - ptb: {d}')
-    # print(f'avg pct: {sum(pct) / len(pct)}')
-    # print(f'avg diff: {sum(diff) / len(diff)}')
+    ppl = []
+    for i in range(1):
+        if task == "swap_entities": task_data = swap_entities(5)
+        elif task == "swap_sents": task_data = swap_sents()
+        elif task == "insert_sent": task_data = insert_sent()
+        elif task == "negate": task_data = negate()
+        else:
+            print("invalid task")
+            return
+        pdb.set_trace()
+        i_bools = []
+        i_diff = []
+        i_ppl = []
+        n = 0
+        for idx, dd in tqdm.tqdm(enumerate(task_data), total=len(task_data)):
+            if dd['suffix_ptb_flag'] > 0:
+                n += 1
+                gt_score, ptb_score = score(dd['prefix'], dd['suffix'], dd['suffix_ptb'])
+                i_bools.append(gt_score > ptb_score)
+                i_diff.append(gt_score - ptb_score)
+                candidates = [dd['suffix'], dd['suffix_ptb']]
+                sequences = [dd['prefix'].strip() + " " + x.strip() for x in candidates]
+                perplexities = compute_gpt2(sequences)
+                i_ppl.append(np.mean([perplexities[0] < y for y in perplexities[1:]]))
+        mean_pct = sum(i_bools) / len(i_bools)
+        mean_diff = sum(i_diff) / len(i_diff)
+        mean_ppl = sum(i_ppl) / len(i_ppl)
+        pct.append(mean_pct)
+        diff.append(mean_diff)
+        ppl.append(mean_ppl)
+        # print(f'  % times gt > ptb: {mean_pct}')
+        # print(f'  average gt - ptb: {mean_diff}')
+        # print(f'  % times gpt2 gt ppl < ptb ppl: {mean_ppl}')
+    print(f'  # total instances: {len(task_data)}')
+    print(f'  # perturbed instances: {n}')
+    print(f'average pct: {sum(pct) / len(pct)}')
+    print(f'average diff: {sum(diff) / len(diff)}')
+    print(f'average ppl: {sum(ppl) / len(ppl)}')
 
 
-main()
+evaluate("swap_entities")

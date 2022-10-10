@@ -15,6 +15,9 @@ import nltk
 import checklist
 import pdb
 import numpy as np
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.tokenize.treebank import TreebankWordDetokenizer
 from transformers import T5Tokenizer
 from rankgen import RankGenGenerator
 from rankgen_encoder import RankGenEncoder
@@ -73,7 +76,7 @@ def swap_entities(n=1):
     all_entities_suffix = {}
 
     for tup in data:
-        suffix = tup['prefix']
+        suffix = tup['suffix']
         doc_suffix = nlp(suffix)
         for ent in doc_suffix.ents:
             if ent.type not in all_entities_suffix:
@@ -236,6 +239,25 @@ def negate(n=1):
     return negated
 
 
+def stop_words():
+    sw = []
+    for tup in tqdm.tqdm(data, total=len(data)):
+        prefix = tup['prefix']
+        suffix = tup['suffix']
+        negatives = tup['negatives']
+        stop_words = set(stopwords.words('english'))
+        word_tokens = word_tokenize(suffix)
+        filtered = [w for w in word_tokens if not w.lower() in stop_words]
+        sw_flag = 0
+        if len(filtered) == len(word_tokens):
+            new_suffix = ''
+        else:
+            new_suffix = TreebankWordDetokenizer().detokenize(filtered)
+            sw_flag = 1
+        sw.append({'prefix':prefix,'suffix':suffix, 'suffix_ptb':new_suffix, 'suffix_ptb_flag':sw_flag, 'negatives':negatives})
+    return sw
+
+
 def compute_gpt2(sequences):
     with torch.no_grad():
         inputs = cudafy_tokens(tokenizer(sequences, return_tensors="pt", padding=True, truncation=True))
@@ -249,15 +271,20 @@ def compute_gpt2(sequences):
     return perplexities
 
 
-def evaluate(task):
+def compute_bluert(sequences):
+    return
+
+
+def evaluate(task, n):
     pct = []
     diff = []
     ppl = []
     for i in range(1):
-        if task == "swap_entities": task_data = swap_entities(5)
-        elif task == "swap_sents": task_data = swap_sents()
-        elif task == "insert_sent": task_data = insert_sent()
-        elif task == "negate": task_data = negate()
+        if task == "swap_entities": task_data = swap_entities(n)
+        elif task == "swap_sents": task_data = swap_sents(n)
+        elif task == "insert_sent": task_data = insert_sent(n)
+        elif task == "negate": task_data = negate(n)
+        elif task == "stop_words": task_data = stop_words()
         else:
             print("invalid task")
             return
@@ -292,4 +319,4 @@ def evaluate(task):
     print(f'average ppl: {sum(ppl) / len(ppl)}')
 
 
-evaluate("swap_entities")
+evaluate("stop_words", 1)

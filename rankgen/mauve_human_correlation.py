@@ -49,13 +49,23 @@ else:
     mauve_data = []
     for m in models:
         dd = df[(df.model_a == m) | (df.model_b == m)]
-        mauve_score = mauve.compute_mauve(p_text=dd['completiona'].tolist(), q_text=dd['completionb'].tolist(), device_id=0, max_text_length=1024, verbose=False)
+        m_gen = []
+        other_gen = []
+        for i, d in dd.iterrows():
+            if d['model_a'] == m:
+                m_gen.append(d['completiona'])
+                other_gen.append(d['completionb'])
+            else:
+                m_gen.append(d['completionb'])
+                other_gen.append(d['completiona'])
+        mauve_score = mauve.compute_mauve(p_text=m_gen, q_text=other_gen, device_id=0, max_text_length=1024, verbose=False)
         print(mauve_score.mauve)
         mauve_data.append(mauve_score)
     with open("mauve.pkl", "wb") as f:
         pickle.dump(mauve_data, f)
 
 mauve_scores = [m.mauve for m in mauve_data]
+print(mauve_scores)
 print(f'interesting: {stats.spearmanr(interesting_params, mauve_scores)}')
 
 pdb.set_trace()

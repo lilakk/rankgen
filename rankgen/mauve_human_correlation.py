@@ -6,6 +6,7 @@ import pdb
 import mauve
 import pickle
 import os
+import random
 from scipy import stats
 
 df = pd.read_csv('rankgen_data/human_eval.csv')
@@ -42,30 +43,43 @@ interesting_params = choix.ilsr_pairwise(len(models), interesting)
 sense_params = choix.ilsr_pairwise(len(models), sense)
 humanlike_params = choix.ilsr_pairwise(len(models), humanlike)
 
-if os.path.exists("mauve.pkl"):
-    with open("mauve.pkl", "rb") as f:
-        mauve_data = pickle.load(f)
+mauve_data = []
+if os.path.exists("mauve_scores.pkl"):
+    with open("mauve_scores.pkl", "rb") as f:
+        mauve_scores = []
+        try:
+            while True:
+                mauve_scores.append(pickle.load(f))
+        except EOFError:
+            pass
+    pdb.set_trace()
 else:
-    mauve_data = []
-    for m in models:
-        dd = df[(df.model_a == m) | (df.model_b == m)]
-        m_gen = []
-        other_gen = []
-        for i, d in dd.iterrows():
-            if d['model_a'] == m:
-                m_gen.append(d['completiona'])
-                other_gen.append(d['completionb'])
-            else:
-                m_gen.append(d['completionb'])
-                other_gen.append(d['completiona'])
-        mauve_score = mauve.compute_mauve(p_text=m_gen, q_text=other_gen, device_id=0, max_text_length=1024, verbose=False)
-        print(mauve_score.mauve)
-        mauve_data.append(mauve_score)
-    with open("mauve.pkl", "wb") as f:
-        pickle.dump(mauve_data, f)
+    mauve_scores = []
+if len(mauve_scores) < df.shape[0]:
+    for i, row in df.iterrows():
+        if i < len(mauve_scores):
+            'Reading mauve scores from pickle file'
+            mauve_a = mauve_scores[i]['mauve_a']
+            mauve_b = mauve_scores[i]['mauve_b']
+            print(mauve_a.mauve, mauve_b.mauve)
+        else:
+            "Computing mauve scores"
+            mauve_a = mauve.compute_mauve(p_text=row['ctx'], q_text=row['completiona'], device_id=0, verbose=False)
+            mauve_b = mauve.compute_mauve(p_text=row['ctx'], q_text=row['completionb'], device_id=0, verbose=False)
+            d = {'mauve_a': mauve_a, 'mauve_b': mauve_b}
+            print(mauve_a.mauve, mauve_b.mauve)
+            mauve_scores.append(d)
+            with open("mauve_scores.pkl", "ab+") as f:
+                pickle.dump(d, f)
+        r = random.randint(0, 1)
+        mauve_a = mauve_a.mauve
+        mauve_b = mauve_b.mauve
+        if mauve_a > mauve_b or (mauve_a == mauve_b and r == 0):
+            mauve_data.append((models.index(model_a), models.index(model_b)))
+        elif mauve_a < mauve_b or (mauve_a == mauve_b and r == 1):
+            mauve_data.append((models.index(model_b), models.index(model_a)))
+mauve_params = choix.ilsr_pairwise(len(models), mauve_data)
 
-mauve_scores = [m.mauve for m in mauve_data]
-print(mauve_scores)
-print(f'interesting: {stats.spearmanr(interesting_params, mauve_scores)}')
+print(f'interesting: {stats.spearmanr(interesting_params, mauve_params)}')
 
 pdb.set_trace()

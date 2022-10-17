@@ -13,8 +13,8 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from utils import execute_gpt2, cudafy_tokens, form_partitions, truncate
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default="data/t5_xl_all_domains_wiki_random.jsonl")
-parser.add_argument('--output_file', default="data/wiki_gpt2_medium_p90_multi.tsv")
+parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl")
+parser.add_argument('--output_file', default="gpt2_generate.jsonl", type=str)
 parser.add_argument('--model_size', default="medium")
 parser.add_argument('--num_instances', default=7713, type=int)
 parser.add_argument('--num_samples', default=1, type=int)
@@ -40,7 +40,6 @@ avg_score = []
 all_score = []
 random.seed(43)
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
 
 output = ""
 suffix_lens = []

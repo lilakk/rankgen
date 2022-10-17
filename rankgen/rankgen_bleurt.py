@@ -9,6 +9,7 @@ import torch
 import random
 import json
 import nltk
+import pdb
 from bleurt import score
 from nltk.tokenize import sent_tokenize
 from functools import partial
@@ -21,8 +22,6 @@ from transformers.utils import logging
 nltk.download('punkt')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-bleurt_scorer = score.BleurtScorer("bleurt/bleurt/test_checkpoint")
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl", type=str)
 parser.add_argument('--num_samples', default=10, type=int)
@@ -34,7 +33,7 @@ parser.add_argument('--cache_dir', default=None, type=str)
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
-parser.add_argument('--output_file', default="rankgen_bleurt.txt", type=str)
+parser.add_argument('--output_file', default="ensemble_expt/rankgen_bleurt.jsonl", type=str)
 args = parser.parse_args()
 
 with open(args.dataset, "r") as f:
@@ -45,16 +44,15 @@ if args.num_shards > 1:
     data = partitions[args.local_rank]
     args.output_file = f'{args.output_file}.shard_{args.local_rank}'
 
-t5x_embedder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args.cache_dir)
+rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args.cache_dir)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.cuda.set_per_process_memory_fraction(1.0)
 
 random.seed(49)
 random.shuffle(data)
 
 random.seed(442)
 random.shuffle(data)
-
-folder_name = f"token_bs_t5x"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -63,6 +61,8 @@ tokenizer.pad_token = tokenizer.eos_token
 model = GPT2LMHeadModel.from_pretrained(f"gpt2-{args.model_size}", cache_dir=args.cache_dir)
 model.to(device)
 model.eval()
+
+bleurt_scorer = score.BleurtScorer("bleurt/bleurt/test_checkpoint")
 
 
 def postprocess(outputs):
@@ -82,24 +82,18 @@ def truncate(text):
     return text
 
 
-def scorer_t5x(t5x_embedder, prefixes, suffixes, prefix_vectors=None):
-    if prefix_vectors is None:
-        prefix_vectors = t5x_embedder.encode(prefixes, vectors_type="prefix")["embeddings"]
-    suffix_vectors = t5x_embedder.encode(suffixes, vectors_type="suffix")["embeddings"]
-    matmul = torch.matmul(prefix_vectors, suffix_vectors.t()).squeeze(dim=0)
-    similarities = torch.from_numpy(np.diagonal(matmul.cpu().numpy()))
-    return similarities, prefix_vectors, suffix_vectors
+def scorer_bleurt(bleurt_scorer, prefix, suffixes):
+    prefixes = [prefix for _ in range(len(suffixes))]
+    scores = bleurt_scorer.score(references=prefixes, candidates=suffixes)
+    assert type(scores) == list and len(scores) == len(suffixes)
+    return scores
 
 
-def beam_search(self, contexts, beam_size=2, temperature=1.0, top_p=0.9, num_tokens=20, num_samples=10, max_length=115):
+def beam_search(contexts, scorer=scorer_bleurt, beam_size=2, temperature=1.0, top_p=0.9, num_tokens=20, num_samples=10, max_length=115):
         final_outputs = []
         final_scores = []
         total_generated_tokens = 0
         for ctx in contexts:
-            if beam_size == 1 and num_samples == 1:
-                prefix_vector = None
-            else:
-                _, prefix_vector, _ = self.rankgen_scorer(prefix=ctx, suffixes=[ctx])
             beams = [{
                 "text": "",
                 "eos": False
@@ -113,21 +107,21 @@ def beam_search(self, contexts, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                         all_outs.append(beam)
                         continue
                     # otherwise generate the next n tokens
-                    inputs = self.tokenizer(ctx + beam['text'], truncation=True, padding="longest",
-                                            return_tensors="pt", max_length=1024 - max_new_tokens).to(self.device)
+                    inputs = tokenizer(ctx + beam['text'], truncation=True, padding="longest",
+                                            return_tensors="pt", max_length=1024 - max_new_tokens).to(device)
                     num_input_tokens = len(inputs['input_ids'][0])
                     with torch.inference_mode():
-                        curr_outs = self.language_model.generate(**inputs, do_sample=True, output_scores=True,
+                        curr_outs = model.generate(**inputs, do_sample=True, output_scores=True,
                                                                 return_dict_in_generate=True,
                                                                 max_new_tokens=max_new_tokens, top_k=None, top_p=top_p,
                                                                 num_return_sequences=num_samples, temperature=temperature)
                     is_eos = []
                     for curr_out in curr_outs['sequences']:
-                        if self.tokenizer.eos_token_id in curr_out:
+                        if tokenizer.eos_token_id in curr_out:
                             is_eos.append(True)
                         else:
                             is_eos.append(False)
-                    curr_outs_text = self.postprocess(curr_outs['sequences'][:, num_input_tokens:])
+                    curr_outs_text = postprocess(curr_outs['sequences'][:, num_input_tokens:])
                     for text, eos in zip(curr_outs_text, is_eos):
                         # update all_outs
                         all_outs.append({
@@ -138,14 +132,8 @@ def beam_search(self, contexts, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                 total_generated_tokens += max_new_tokens
                 if len(all_outs) > 1:
                     # skip beam scoring if only one output to choose from
-                    scores, _, _ = self.rankgen_scorer(prefix=ctx, suffixes=[x["text"] for x in all_outs], prefix_vector=prefix_vector)
-                    scores = [(s - torch.mean(scores)) / torch.std(scores) for s in scores]
-                    bleurt_scores = bleurt_scorer.score([x["text"] for x in all_outs], [prefix for _ in range(len(all_outs))])
-                    bleurt_scores = [(s - torch.mean(bleurt_scores)) / torch.std(bleurt_scores) for s in bleurt_scores]
-                    ensemble_scores = [scores[i] + bleurt_scores[i] for i in range(len(scores))]
-                    top_scores, top_indices = torch.topk(k=beam_size)
-                    top_bleurt_scores, top_bleurt_indices = torch.topk(bleurt_scores, k=beam_size)
-                    top_scores, top_indices = torch.topk(scores, k=beam_size)
+                    scores = scorer(prefix=ctx, suffixes=[x["text"] for x in all_outs])
+                    top_scores, top_indices = torch.topk(torch.Tensor(scores), k=beam_size)
                     beams = [all_outs[x] for x in top_indices]  # only track the top k beams
                 else:
                     top_scores = torch.Tensor([1.0])
@@ -153,7 +141,7 @@ def beam_search(self, contexts, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                     beams = all_outs
 
                 for beam in beams:
-                    if len(self.tokenizer.tokenize(beam["text"])) >= max_length:
+                    if len(tokenizer.tokenize(beam["text"])) >= max_length:
                         beam["eos"] = True
 
                 if all([x["eos"] for x in beams]):
@@ -162,7 +150,7 @@ def beam_search(self, contexts, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                     break
         return final_outputs, final_scores
 
-scorer_fn = partial(scorer_t5x, t5x_embedder=t5x_embedder)
+scorer_fn = partial(scorer_bleurt, bleurt_scorer=bleurt_scorer)
 
 outputs = []
 

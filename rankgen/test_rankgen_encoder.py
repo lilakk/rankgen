@@ -5,7 +5,8 @@ import tqdm
 import os
 import numpy as np
 import time
-from rankgen import RankGenEncoder, RankGenGenerator
+from rankgen_encoder import RankGenEncoder
+from rankgen_generator import RankGenGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_path', default="kalpeshk2011/rankgen-t5-base-all", type=str)

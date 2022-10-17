@@ -1,0 +1,21 @@
+t5_encoder is in training mode: False
+using loss function l2 with True penalty, alpha = 0.05
+init suffix token: Tag
+EPOCH 0
+  l2_loss: 41.279457092285156
+  suffix vector: tensor([-0.0273, -0.0404,  0.0698,  ...,  0.1441, -0.0141, -0.0934],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.505486488342285
+  l2 dist from vocab: 655.4794311523438
+  learned embed: Parameter containing:
+tensor([[ -0.8650, -12.3106, -10.7364,  ...,  -9.1099,  21.4180, -10.3754]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 35.346466064453125
+  suffix vector: tensor([-0.1948, -0.0945,  0.1175,  ..., -0.0395,  0.0671, -0.0759],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 6.978312969207764
+  l2 dist from vocab: 567.363037109375
+  learned embed: Parameter containing:
+tensor([[ 3.9831, -7.2630, -6.1422,  ..., -4.2269, 16.4529, -5.4390]],
+       device='cuda:0', requires_grad=True)

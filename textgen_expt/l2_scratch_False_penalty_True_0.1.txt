@@ -1,0 +1,52 @@
+t5_encoder is in training mode: False
+using loss function l2 with True penalty, alpha = 0.1
+init suffix token: amazing
+EPOCH 0
+  l2_loss: 64.90550994873047
+  suffix vector: tensor([ 0.0772,  0.0751, -0.1804,  ..., -0.2738,  0.1828,  0.0458],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.14229965209961
+  l2 dist from vocab: 567.632080078125
+  learned embed: Parameter containing:
+tensor([[-1.3794, -0.2519, -9.2861,  ...,  8.5500,  6.9802,  3.5090]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 53.915306091308594
+  suffix vector: tensor([-0.0711,  0.0609, -0.1112,  ..., -0.2172,  0.1433,  0.1243],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 6.316153049468994
+  l2 dist from vocab: 475.99151611328125
+  learned embed: Parameter containing:
+tensor([[-0.2253,  1.2435, -0.4595,  ..., -0.2310, -0.2904,  0.3222]],
+       device='cuda:0', requires_grad=True)
+STOPPING AT EPOCH 530
+token after optim: mes
+suffix seq:  mes
+using loss function l2 with True penalty, alpha = 0.1
+init suffix token: femeile
+EPOCH 0
+  l2_loss: 69.36505889892578
+  suffix vector: tensor([ 0.0877,  0.0995, -0.1904,  ..., -0.2739,  0.2071,  0.0400],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.220416069030762
+  l2 dist from vocab: 611.4464111328125
+  learned embed: Parameter containing:
+tensor([[ 4.5625,  3.8438, -1.8047,  ..., -4.8125, -2.8438, -5.0000]],
+       device='cuda:0', requires_grad=True)
+STOPPING AT EPOCH 436
+token after optim: mes
+suffix seq:  mes mes
+using loss function l2 with True penalty, alpha = 0.1
+init suffix token: ungen
+EPOCH 0
+  l2_loss: 63.211299896240234
+  suffix vector: tensor([ 0.0930,  0.0989, -0.1791,  ..., -0.2782,  0.2098,  0.0315],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.337158203125
+  l2 dist from vocab: 548.7413940429688
+  learned embed: Parameter containing:
+tensor([[-2.2087, -3.9588, -0.8389,  ..., 35.9222,  2.2363, -2.7004]],
+       device='cuda:0', requires_grad=True)
+STOPPING AT EPOCH 307
+token after optim: 
+suffix seq:  mes mes 

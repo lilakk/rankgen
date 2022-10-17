@@ -1,0 +1,104 @@
+t5_encoder is in training mode: False
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: who
+EPOCH 0
+  l2_loss: 8.17278003692627
+  suffix vector: tensor([-0.1168, -0.1101, -0.0572,  ..., -0.1634,  0.1477,  0.0333],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.17278003692627
+  l2 dist from vocab: 521.7445678710938
+  learned embed: Parameter containing:
+tensor([[-2.9110,  8.2572, -2.1400,  ...,  9.9974, -4.2820,  3.6148]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 2.651193380355835
+  suffix vector: tensor([-0.0864,  0.0852,  0.0271,  ..., -0.0424,  0.0605,  0.1134],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.651193380355835
+  l2 dist from vocab: 591.490966796875
+  learned embed: Parameter containing:
+tensor([[-2.7151,  6.1805, -9.5686,  ..., -6.6268,  2.6449,  3.5098]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  l2_loss: 2.2076568603515625
+  suffix vector: tensor([-0.0671,  0.0843,  0.0205,  ..., -0.0236,  0.0604,  0.1474],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.2076568603515625
+  l2 dist from vocab: 600.6751098632812
+  learned embed: Parameter containing:
+tensor([[-2.6608,  6.2777, -9.2861,  ..., -8.9723,  2.3601,  8.2712]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  l2_loss: 2.0993618965148926
+  suffix vector: tensor([-0.0511,  0.0989,  0.0215,  ..., -0.0143,  0.0878,  0.1609],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.0993618965148926
+  l2 dist from vocab: 603.7752075195312
+  learned embed: Parameter containing:
+tensor([[-2.5303,  6.2055, -8.8976,  ..., -8.9493,  2.2437, 10.8772]],
+       device='cuda:0', requires_grad=True)
+token after optim: who
+suffix seq:  who
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: Jahres
+EPOCH 0
+  l2_loss: 8.3367280960083
+  suffix vector: tensor([-0.0947,  0.0638, -0.0363,  ..., -0.0236,  0.0234, -0.0820],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.3367280960083
+  l2 dist from vocab: 730.7628173828125
+  learned embed: Parameter containing:
+tensor([[-14.3949,  -4.3088,  13.6954,  ..., -13.9605, -13.9538, -18.2227]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 2.7677836418151855
+  suffix vector: tensor([-0.1112,  0.1369,  0.0273,  ..., -0.0278,  0.1034,  0.1282],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.7677836418151855
+  l2 dist from vocab: 800.1865844726562
+  learned embed: Parameter containing:
+tensor([[-17.5377,  -7.5260,  16.7842,  ...,  -8.1129,  -6.7335, -20.0803]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  l2_loss: 2.1686453819274902
+  suffix vector: tensor([-0.0986,  0.1437,  0.0163,  ..., -0.0328,  0.1402,  0.1647],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.1686453819274902
+  l2 dist from vocab: 812.970947265625
+  learned embed: Parameter containing:
+tensor([[-20.5399,  -6.0479,  16.6501,  ...,   2.7740,  -6.5491, -26.3377]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  l2_loss: 2.0117509365081787
+  suffix vector: tensor([-0.0909,  0.1486,  0.0061,  ..., -0.0243,  0.1359,  0.1828],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 2.0117509365081787
+  l2 dist from vocab: 819.0737915039062
+  learned embed: Parameter containing:
+tensor([[-21.2980,  -5.7797,  17.1343,  ...,   5.3386,  -7.4428, -27.7004]],
+       device='cuda:0', requires_grad=True)
+token after optim: Jahres
+suffix seq:  who Jahres
+using loss function l2 with False penalty, alpha = 0.1
+init suffix token: limits
+EPOCH 0
+  l2_loss: 8.794899940490723
+  suffix vector: tensor([-0.0538,  0.0683,  0.2005,  ..., -0.2174,  0.2085, -0.0751],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.794899940490723
+  l2 dist from vocab: 589.347412109375
+  learned embed: Parameter containing:
+tensor([[-10.0997,   7.4623,   6.2813,  ...,   6.7816,  -1.8073,  -6.5267]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  l2_loss: 3.7224526405334473
+  suffix vector: tensor([-0.0434,  0.0581,  0.0654,  ..., -0.0386,  0.0483,  0.1096],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 3.7224526405334473
+  l2 dist from vocab: 643.32421875
+  learned embed: Parameter containing:
+tensor([[ 2.4695,  3.1045, 12.7662,  ..., -0.3597,  2.3913, -9.8844]],
+       device='cuda:0', requires_grad=True)
+STOPPING AT EPOCH 855
+token after optim: limits
+suffix seq:  who Jahres limits

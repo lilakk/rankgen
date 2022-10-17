@@ -1,0 +1,121 @@
+t5_encoder is in training mode: False
+using loss function cosine_similarity with True penalty, alpha = 0.1
+init suffix token: cela
+EPOCH 0
+  cosine_similarity_loss: 75.78276824951172
+  suffix vector: tensor([-0.0597, -0.0009,  0.0781,  ..., -0.1425,  0.1348,  0.0229],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.46992015838623
+  l2 dist from vocab: 747.4716186523438
+  learned embed: Parameter containing:
+tensor([[-34.7472,  -6.5685, -16.3672,  ...,  -9.8415,   4.2460,  -2.2675]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  cosine_similarity_loss: 49.4111213684082
+  suffix vector: tensor([-0.0999, -0.0850,  0.0596,  ..., -0.0756,  0.1014,  0.1009],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 7.283618927001953
+  l2 dist from vocab: 486.4068908691406
+  learned embed: Parameter containing:
+tensor([[-12.1688,  -1.5356,  -0.8277,  ...,   0.2090,  -0.3364,  -0.7394]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  cosine_similarity_loss: 47.711177825927734
+  suffix vector: tensor([ 0.0225,  0.1745,  0.0193,  ..., -0.0170,  0.2494, -0.0486],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 5.608779430389404
+  l2 dist from vocab: 473.0887756347656
+  learned embed: Parameter containing:
+tensor([[-1.5831, -0.4860, -0.5998,  ..., -0.3734, -0.7253, -1.0222]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  cosine_similarity_loss: 47.56976318359375
+  suffix vector: tensor([-0.0396,  0.1345,  0.0757,  ..., -0.0181,  0.2462,  0.0297],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 4.661191463470459
+  l2 dist from vocab: 472.7248840332031
+  learned embed: Parameter containing:
+tensor([[ 0.3896, -0.7150, -0.2311,  ..., -0.2176,  0.3528, -0.7415]],
+       device='cuda:0', requires_grad=True)
+token after optim: gardinen
+suffix seq:  gardinen
+using loss function cosine_similarity with True penalty, alpha = 0.1
+init suffix token: clinique
+EPOCH 0
+  cosine_similarity_loss: 75.59904479980469
+  suffix vector: tensor([-0.1277,  0.1833,  0.1363,  ..., -0.1283,  0.0142, -0.0320],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.442355155944824
+  l2 dist from vocab: 745.9931640625
+  learned embed: Parameter containing:
+tensor([[-3.1117, -7.9107, 13.0837,  ...,  1.8942, -7.7434, 19.1919]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  cosine_similarity_loss: 49.34663391113281
+  suffix vector: tensor([-0.1122, -0.0614,  0.0207,  ..., -0.0957,  0.1378,  0.0846],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 7.183775424957275
+  l2 dist from vocab: 485.8833312988281
+  learned embed: Parameter containing:
+tensor([[ 0.4253, -1.6515,  0.0426,  ...,  0.1200, -0.4340,  1.3640]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  cosine_similarity_loss: 47.64419174194336
+  suffix vector: tensor([ 0.0350,  0.1320, -0.1940,  ..., -0.0675,  0.1488, -0.0220],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 5.010242938995361
+  l2 dist from vocab: 473.0076599121094
+  learned embed: Parameter containing:
+tensor([[ 0.3909,  0.2011, -1.6448,  ..., -0.4942, -0.3606, -0.1523]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  cosine_similarity_loss: 47.56228256225586
+  suffix vector: tensor([-0.0065,  0.0604, -0.0985,  ..., -0.0813,  0.0852,  0.0202],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 4.628230094909668
+  l2 dist from vocab: 472.6255187988281
+  learned embed: Parameter containing:
+tensor([[ 0.5564,  0.2375, -1.2648,  ..., -0.3536, -0.3721, -0.2072]],
+       device='cuda:0', requires_grad=True)
+token after optim: Bürgermeister
+suffix seq:  gardinen Bürgermeister
+using loss function cosine_similarity with True penalty, alpha = 0.1
+init suffix token: chiar
+EPOCH 0
+  cosine_similarity_loss: 79.28125762939453
+  suffix vector: tensor([-0.1294, -0.0413,  0.0221,  ..., -0.2184,  0.0880,  0.0471],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 8.485747337341309
+  l2 dist from vocab: 782.5546264648438
+  learned embed: Parameter containing:
+tensor([[ -2.1601,  14.7194, -14.6812,  ...,  -0.5284,  15.5793,  -7.4179]],
+       device='cuda:0', requires_grad=True)
+EPOCH 500
+  cosine_similarity_loss: 49.91615295410156
+  suffix vector: tensor([-0.1041, -0.0667,  0.0444,  ..., -0.0610,  0.1036,  0.0694],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 7.289554119110107
+  l2 dist from vocab: 491.4237060546875
+  learned embed: Parameter containing:
+tensor([[ 0.4428, -0.6328, -1.1915,  ...,  0.2272,  0.5468, -1.0184]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1000
+  cosine_similarity_loss: 47.71453094482422
+  suffix vector: tensor([-0.0318,  0.0412, -0.1165,  ..., -0.1446,  0.2129, -0.1063],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 5.406712532043457
+  l2 dist from vocab: 473.2943115234375
+  learned embed: Parameter containing:
+tensor([[ 0.7596, -0.6748, -1.0262,  ..., -0.2036,  0.0165, -0.5384]],
+       device='cuda:0', requires_grad=True)
+EPOCH 1500
+  cosine_similarity_loss: 47.5572624206543
+  suffix vector: tensor([-0.0208,  0.1193, -0.0597,  ..., -0.0811,  0.1757,  0.0529],
+       device='cuda:0', grad_fn=<SqueezeBackward0>)
+  vector l2 distance: 4.691416263580322
+  l2 dist from vocab: 472.6333312988281
+  learned embed: Parameter containing:
+tensor([[ 0.6186, -0.1370, -0.3961,  ..., -0.0171, -0.2835, -0.7085]],
+       device='cuda:0', requires_grad=True)
+token after optim: Bürgermeister
+suffix seq:  gardinen Bürgermeister Bürgermeister

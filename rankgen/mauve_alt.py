@@ -27,6 +27,7 @@ for i, row in df.iterrows():
     if row['model_b'] not in models:
         models.append(row['model_b'])
 
+pdb.set_trace()
 interesting = []
 sense = []
 humanlike = []
@@ -106,7 +107,6 @@ else:
             gt_suf = gt_suf[0:len(gen_suf)]
             pre_gt.append(pre + ' ' + gt_suf)
             pre_gen.append(pre + ' ' + gen_suf)
-            pdb.set_trace()
         mauve_m = mauve.compute_mauve(p_text=pre_gt, q_text=pre_gen, device_id=0, verbose=False)
         mauve_scores.append(mauve_m)
         print(mauve_m)

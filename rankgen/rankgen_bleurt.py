@@ -15,7 +15,6 @@ from nltk.tokenize import sent_tokenize
 from functools import partial
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from utils import form_partitions
-from rankgen_encoder import RankGenEncoder
 from utils import truncate
 from transformers.utils import logging
 
@@ -24,16 +23,15 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl", type=str)
-parser.add_argument('--num_samples', default=10, type=int)
-parser.add_argument('--beam_size', default=2, type=int)
-parser.add_argument('--num_tokens', default=20, type=int)
+parser.add_argument('--num_samples', default=20, type=int)
+parser.add_argument('--beam_size', default=1, type=int)
+parser.add_argument('--num_tokens', default=128, type=int)
 parser.add_argument('--top_p', default=0.9, type=float)
 parser.add_argument('--model_size', default='medium', type=str)
 parser.add_argument('--cache_dir', default=None, type=str)
-parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
-parser.add_argument('--output_file', default="ensemble_expt/rankgen_bleurt.jsonl", type=str)
+parser.add_argument('--output_file', default="ensemble_expt/rankgen_bleurt_full_rerank.jsonl", type=str)
 args = parser.parse_args()
 
 with open(args.dataset, "r") as f:
@@ -44,7 +42,6 @@ if args.num_shards > 1:
     data = partitions[args.local_rank]
     args.output_file = f'{args.output_file}.shard_{args.local_rank}'
 
-rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args.cache_dir)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.cuda.set_per_process_memory_fraction(1.0)
 

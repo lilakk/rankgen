@@ -22,6 +22,7 @@ from scipy import stats
 
 nltk.download('punkt')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl", type=str)
@@ -34,7 +35,8 @@ parser.add_argument('--cache_dir', default=None, type=str)
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
-parser.add_argument('--output_file', default="ensemble_expt/compare_rankgen_comet.jsonl", type=str)
+parser.add_argument('--output_file', default="ensemble_expt/compare_rankgen_comet_generations.jsonl", type=str)
+parser.add_argument('--output_file_compare', default="ensemble_expt/compare_rankgen_comet.jsonl", type=str)
 args = parser.parse_args()
 
 with open(args.dataset, "r") as f:
@@ -107,7 +109,7 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
     final_scores = []
     total_generated_tokens = 0
     rankgen_comet = []
-    for ctx in contexts:
+    for idx, ctx in tqdm.tqdm(enumerate(contexts)):
         if beam_size == 1 and num_samples == 1:
             prefix_vector = None
         else:
@@ -151,20 +153,22 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
 
             if len(all_outs) > 1:
                 # skip beam scoring if only one output to choose from
-                rankgen_scores, _, _ = rankgen_scorer(prefix=ctx, suffixes=[x["text"] for x in all_outs], prefix_vector=prefix_vector)
+                rankgen_scores, _, _ = scorer_rankgen(prefix=ctx, suffixes=[x["text"] for x in all_outs], prefix_vector=prefix_vector)
                 top_rankgen_scores, top_rankgen_indices = torch.topk(rankgen_scores, k=beam_size)
-                comet_scores = comet_scorer(prefix=ctx, suffixes=[x["text"] for x in all_outs])
+                comet_scores = scorer_comet(prefix=ctx, suffixes=[x["text"] for x in all_outs])
                 top_comet_scores, top_comet_indices = torch.topk(torch.Tensor(comet_scores), k=beam_size)
-                spearman = stats.spearmanr(top_rankgen_indices, top_comet_indices)
-                kendall = stats.kendalltau(top_rankgen_indices, top_comet_indices)
+                spearman = stats.spearmanr(top_rankgen_indices.cpu(), top_comet_indices.cpu())
+                kendall = stats.kendalltau(top_rankgen_indices.cpu(), top_comet_indices.cpu())
                 rankgen_comet.append({
                     'all_outs': all_outs,
+                    'num_outs': len(all_outs),
                     'top_rankgen_scores': top_rankgen_scores,
                     'top_rankgen_indices': top_rankgen_indices,
                     'top_comet_scores': top_comet_scores,
                     'top_comet_indices': top_comet_indices,
                     'spearman': spearman,
-                    'kendall': kendall
+                    'kendall': kendall,
+                    'same_top_1': top_rankgen_indices[0] == top_comet_indices[0]
                     })
                 beams = [all_outs[x] for x in top_rankgen_indices[:beam_size]]  # only track the top k beams
 
@@ -181,6 +185,10 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                 final_outputs.append([x["text"] for x in beams])
                 final_scores.append(top_rankgen_scores)
                 break
+        if (idx + 1) % 10 == 0:
+            print("Saving comparison file...")
+            with open(args.output_file_compare, "w") as f:
+                f.write("\n".join(rankgen_comet) + "\n")
     return final_outputs, final_scores
 
 outputs = []

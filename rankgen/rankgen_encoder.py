@@ -27,6 +27,7 @@ class RankGenEncoder(torch.nn.Module):
         self.tokenizer = T5Tokenizer.from_pretrained(f"google/t5-v1_1-{self.model_size}", cache_dir=cache_dir)
         self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
         self.model.to(self.device)
+        self.model.eval()
 
     def encode(self, inputs, learned_embed=None, vectors_type="prefix", return_squeeze=True, verbose=False, return_input_ids=False):
         tokenizer = self.tokenizer
@@ -50,7 +51,8 @@ class RankGenEncoder(torch.nn.Module):
             if learned_embed is not None:
                 tokenized_inputs['learned_embed'] = learned_embed
             tokenized_inputs = tokenized_inputs.to(self.device)
-            batch_embeddings = self.model(**tokenized_inputs)
+            with torch.inference_mode():
+                batch_embeddings = self.model(**tokenized_inputs)
             all_embeddings.append(batch_embeddings)
             if return_input_ids:
                 all_input_ids.extend(tokenized_inputs.input_ids.cpu().tolist())

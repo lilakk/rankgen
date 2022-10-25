@@ -2,6 +2,8 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import torch
 import argparse
+import json
+import pdb
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from rankgen_encoder import RankGenEncoder
 from datasets import load_dataset
@@ -20,6 +22,7 @@ parser.add_argument('--cache_dir', default=None, type=str)
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
+parser.add_argument('--ranker', default='comet', type=str)
 parser.add_argument('--output_folder', default="suffix_len_expt", type=str)
 args = parser.parse_args()
 
@@ -31,7 +34,8 @@ model = GPT2LMHeadModel.from_pretrained(f"gpt2-{args.model_size}", cache_dir=arg
 model.to(device)
 model.eval()
 
-raw_data = load_dataset("wikipedia", "20220301.en")
+raw_data = load_dataset("wikipedia", "20220301.en", cache_dir="/scratch/ella/data")
+pdb.set_trace()
 
 with open(args.dataset, "r") as f:
     data = [json.loads(x) for x in f.read().strip().split("\n")]

@@ -9,7 +9,7 @@ import os
 from utils import truncate
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--ranker', default="bleurt")
+parser.add_argument('--ranker', default="simcse")
 parser.add_argument('--gen_key_type', default="second_idx")
 parser.add_argument('--data_length', default=7713, type=int)
 parser.add_argument('--max_mauve_length', default=768, type=int)
@@ -17,7 +17,7 @@ parser.add_argument('--truncate', default=None, type=int)
 parser.add_argument('--refresh', action='store_true')
 args = parser.parse_args()
 
-with open(f"ensemble_expt/rankgen_{args.ranker}.jsonl", 'r') as f:
+with open(f"ensemble_expt/{args.ranker}_full_rerank.jsonl", 'r') as f:
     data = [json.loads(x) for x in f.read().strip().split("\n")]
 
 data_dict = {x["prefix"]: x for x in data}
@@ -34,7 +34,7 @@ all_human = []
 all_gen = []
 num_tokens = []
 
-output_file = f"ensemble_expt/{args.ranker}.mauve.pkl"
+output_file = f"ensemble_expt/{args.ranker}_full_rerank.mauve.pkl"
 if args.truncate:
     data = data[:args.truncate]
     output_file += f"{output_file}.truncate"
@@ -66,5 +66,5 @@ else:
     mauve_data[mauve_output_key] = mauve1
 
     if args.truncate is None:
-        with open(f"ensemble_expt/{args.ranker}.mauve.pkl", "wb") as f:
+        with open(output_file, "wb") as f:
             pickle.dump(mauve_data, f)

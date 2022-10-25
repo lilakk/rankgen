@@ -171,7 +171,7 @@ for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
     beam_text, beam_scores = beam_search(contexts=[instance["prefix"]], scorer=scorer_fn,
                                                            beam_size=args.beam_size,
                                                            top_p=args.top_p, num_tokens=args.num_tokens,
-                                                           num_samples=args.num_samples)
+                                                           num_samples=args.num_samples, max_length=args.max_length)
 
     beam_text = beam_text[0]
     beam_text = [truncate(" ".join(x.split())) for x in beam_text]

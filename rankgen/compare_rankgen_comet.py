@@ -35,8 +35,8 @@ parser.add_argument('--cache_dir', default=None, type=str)
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
-parser.add_argument('--output_file', default="ensemble_expt/compare_rankgen_comet_generations.jsonl", type=str)
-parser.add_argument('--output_file_compare', default="ensemble_expt/compare_rankgen_comet.jsonl", type=str)
+parser.add_argument('--output_file', default="ensemble_expt/compare_rankgen_comet_generations_beam_search.jsonl", type=str)
+parser.add_argument('--output_file_compare', default="ensemble_expt/compare_rankgen_comet_beam_search.jsonl", type=str)
 args = parser.parse_args()
 
 with open(args.dataset, "r") as f:
@@ -109,7 +109,7 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
     final_scores = []
     total_generated_tokens = 0
     rankgen_comet = []
-    for idx, ctx in tqdm.tqdm(enumerate(contexts)):
+    for ctx in tqdm.tqdm(contexts, total=len(contexts)):
         if beam_size == 1 and num_samples == 1:
             prefix_vector = None
         else:
@@ -154,9 +154,9 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
             if len(all_outs) > 1:
                 # skip beam scoring if only one output to choose from
                 rankgen_scores, _, _ = scorer_rankgen(prefix=ctx, suffixes=[x["text"] for x in all_outs], prefix_vector=prefix_vector)
-                top_rankgen_scores, top_rankgen_indices = torch.topk(rankgen_scores, k=beam_size)
+                top_rankgen_scores, top_rankgen_indices = torch.topk(rankgen_scores, k=len(all_outs))
                 comet_scores = scorer_comet(prefix=ctx, suffixes=[x["text"] for x in all_outs])
-                top_comet_scores, top_comet_indices = torch.topk(torch.Tensor(comet_scores), k=beam_size)
+                top_comet_scores, top_comet_indices = torch.topk(torch.Tensor(comet_scores), k=len(all_outs))
                 spearman = stats.spearmanr(top_rankgen_indices.cpu(), top_comet_indices.cpu())
                 kendall = stats.kendalltau(top_rankgen_indices.cpu(), top_comet_indices.cpu())
                 rankgen_comet.append({
@@ -170,6 +170,7 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                     'kendall': kendall,
                     'same_top_1': top_rankgen_indices[0] == top_comet_indices[0]
                     })
+                top_rankgen_scores, top_rankgen_indices = top_rankgen_scores[:beam_size], top_rankgen_indices[:beam_size]
                 beams = [all_outs[x] for x in top_rankgen_indices[:beam_size]]  # only track the top k beams
 
             else:
@@ -185,11 +186,8 @@ def beam_search(contexts, k=10, beam_size=2, temperature=1.0, top_p=0.9, num_tok
                 final_outputs.append([x["text"] for x in beams])
                 final_scores.append(top_rankgen_scores)
                 break
-        if (idx + 1) % 10 == 0:
-            print("Saving comparison file...")
-            with open(args.output_file_compare, "w") as f:
-                f.write("\n".join(rankgen_comet) + "\n")
-    return final_outputs, final_scores
+
+    return final_outputs, final_scores, rankgen_comet
 
 outputs = []
 target_seq_len = []
@@ -201,12 +199,17 @@ if os.path.exists(args.output_file):
     with open(args.output_file, "r") as f:
         outputs = f.read().strip().split("\n")
 
+comp = []
 for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
     if kk < len(outputs):
         continue
-    beam_text, beam_scores = beam_search(contexts=[instance["prefix"]], beam_size=args.beam_size,
+    beam_text, beam_scores, rankgen_comet = beam_search(contexts=[instance["prefix"]], beam_size=args.beam_size,
                                                            top_p=args.top_p, num_tokens=args.num_tokens,
                                                            num_samples=args.num_samples)
+    comp = comp + rankgen_comet
+    print("Saving comparison file...")
+    with open(args.output_file_compare, "wb") as f:
+        pickle.dump(comp, f)
 
     beam_text = beam_text[0]
     beam_text = [truncate(" ".join(x.split())) for x in beam_text]

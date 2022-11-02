@@ -6,19 +6,28 @@ from torch import trunc
 import mauve
 import pickle
 import os
+import pdb
 from utils import truncate
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--ranker', default="simcse")
+parser.add_argument('--ranker', default="rankgen")
+parser.add_argument('--num_tokens', default=128, type=int)
 parser.add_argument('--gen_key_type', default="second_idx")
-parser.add_argument('--data_length', default=7713, type=int)
 parser.add_argument('--max_mauve_length', default=768, type=int)
 parser.add_argument('--truncate', default=None, type=int)
 parser.add_argument('--refresh', action='store_true')
 args = parser.parse_args()
 
-with open(f"ensemble_expt/{args.ranker}_full_rerank.jsonl", 'r') as f:
+# with open(f"suffix_len_expt/{args.ranker}_{args.num_tokens}_shuffle.jsonl", 'r') as f:
+#     data = [json.loads(x) for x in f.read().strip().split("\n")]
+
+with open(f"ensemble_expt/ensemble_rankgen_comet_product.jsonl", 'r') as f:
     data = [json.loads(x) for x in f.read().strip().split("\n")]
+
+# output_file = f"suffix_len_expt/{args.ranker}_{args.num_tokens}_shuffle_full.mauve.pkl"
+output_file = f"ensemble_expt/ensemble_rankgen_comet_product.mauve.pkl"
 
 data_dict = {x["prefix"]: x for x in data}
 
@@ -26,6 +35,13 @@ mauve_output_key = "random_gen_mauve" if "random" in args.gen_key_type else "max
 
 with open("rankgen_data/wiki.jsonl", "r") as f:
     raw_inp_data = [json.loads(x) for x in f.read().strip().split("\n")]
+
+random.seed(49)
+random.shuffle(raw_inp_data)
+
+random.seed(442)
+random.shuffle(raw_inp_data)
+
 for rid in raw_inp_data:
     assert rid["prefix"] in data_dict
     assert rid["targets"][0] == data_dict[rid["prefix"]]["targets"][0]
@@ -34,7 +50,6 @@ all_human = []
 all_gen = []
 num_tokens = []
 
-output_file = f"ensemble_expt/{args.ranker}_full_rerank.mauve.pkl"
 if args.truncate:
     data = data[:args.truncate]
     output_file += f"{output_file}.truncate"

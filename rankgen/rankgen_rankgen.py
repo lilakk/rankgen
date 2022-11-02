@@ -20,28 +20,25 @@ from transformers.utils import logging
 
 nltk.download('punkt')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl", type=str)
 parser.add_argument('--num_samples', default=10, type=int)
 parser.add_argument('--beam_size', default=2, type=int)
-parser.add_argument('--num_tokens', default=20, type=int)
+parser.add_argument('--num_tokens', default=128, type=int)
 parser.add_argument('--top_p', default=0.9, type=float)
 parser.add_argument('--model_size', default='medium', type=str)
 parser.add_argument('--cache_dir', default=None, type=str)
 parser.add_argument('--rankgen_encoder', default='kalpeshk2011/rankgen-t5-xl-all', type=str)
 parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
-parser.add_argument('--output_file', default="ensemble_expt/rankgen_rankgen_top_p.jsonl", type=str)
 args = parser.parse_args()
+
+output_file = f"suffix_len_expt/rankgen_{args.num_tokens}_shuffle.jsonl"
 
 with open(args.dataset, "r") as f:
     data = [json.loads(x) for x in f.read().strip().split("\n")]
-
-if args.num_shards > 1:
-    partitions = form_partitions(data, args.num_shards)
-    data = partitions[args.local_rank]
-    args.output_file = f'{args.output_file}.shard_{args.local_rank}'
 
 rankgen_encoder = RankGenEncoder(model_path=args.rankgen_encoder, cache_dir=args.cache_dir)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -52,6 +49,11 @@ random.shuffle(data)
 
 random.seed(442)
 random.shuffle(data)
+
+if args.num_shards > 1:
+    partitions = form_partitions(data, args.num_shards)
+    data = partitions[args.local_rank]
+    output_file = f'{output_file}.shard_{args.local_rank}'
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -161,8 +163,8 @@ gen_seq_len = []
 
 logging.set_verbosity_error()
 
-if os.path.exists(args.output_file):
-    with open(args.output_file, "r") as f:
+if os.path.exists(output_file):
+    with open(output_file, "r") as f:
         outputs = f.read().strip().split("\n")
 
 for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
@@ -171,7 +173,7 @@ for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
     beam_text, beam_scores = beam_search(contexts=[instance["prefix"]], scorer=scorer_fn,
                                                            beam_size=args.beam_size,
                                                            top_p=args.top_p, num_tokens=args.num_tokens,
-                                                           num_samples=args.num_samples, max_length=args.max_length)
+                                                           num_samples=args.num_samples)
 
     beam_text = beam_text[0]
     beam_text = [truncate(" ".join(x.split())) for x in beam_text]
@@ -183,11 +185,11 @@ for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
     target_seq_len.append(len(instance["targets"][0].split()))
     gen_seq_len.append(len(beam_text[0].split()))
 
-    if (kk + 1) % 100 == 0:
+    if (kk + 1) % 10 == 0:
         print(f"Avg lens ({kk + 1} instances) = {np.mean(gen_seq_len)} generation, {np.mean(target_seq_len)} target")
         print("Saving file...")
-        with open(args.output_file, "w") as f:
+        with open(output_file, "w") as f:
             f.write("\n".join(outputs) + "\n")
 
-with open(args.output_file, "w") as f:
+with open(output_file, "w") as f:
     f.write("\n".join(outputs) + "\n")

@@ -22,12 +22,13 @@ from transformers.utils import logging
 nltk.download('punkt')
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="rankgen_data/wiki.jsonl", type=str)
-parser.add_argument('--num_samples', default=10, type=int)
-parser.add_argument('--beam_size', default=2, type=int)
-parser.add_argument('--num_tokens', default=8, type=int)
+parser.add_argument('--num_samples', default=20, type=int)
+parser.add_argument('--beam_size', default=1, type=int)
+parser.add_argument('--num_tokens', default=128, type=int)
 parser.add_argument('--top_p', default=0.9, type=float)
 parser.add_argument('--model_size', default='medium', type=str)
 parser.add_argument('--cache_dir', default=None, type=str)
@@ -35,17 +36,11 @@ parser.add_argument('--num_shards', default=1, type=int)
 parser.add_argument('--local_rank', default=0, type=int)
 args = parser.parse_args()
 
-output_file = f"suffix_len_expt/comet_{args.num_tokens}.jsonl"
+# output_file = f"suffix_len_expt/comet_{args.num_tokens}_shuffle.jsonl"
+output_file = "ensemble_expt/comet_full_rerank_2.jsonl"
 
 with open(args.dataset, "r") as f:
     data = [json.loads(x) for x in f.read().strip().split("\n")]
-
-data = data[:1000]
-
-if args.num_shards > 1:
-    partitions = form_partitions(data, args.num_shards)
-    data = partitions[args.local_rank]
-    output_file = f'{output_file}.shard_{args.local_rank}'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.cuda.set_per_process_memory_fraction(1.0)
@@ -56,7 +51,10 @@ random.shuffle(data)
 random.seed(442)
 random.shuffle(data)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if args.num_shards > 1:
+    partitions = form_partitions(data, args.num_shards)
+    data = partitions[args.local_rank]
+    output_file = f'{output_file}.shard_{args.local_rank}'
 
 tokenizer = GPT2Tokenizer.from_pretrained(f"gpt2-{args.model_size}", cache_dir=args.cache_dir)
 tokenizer.pad_token = tokenizer.eos_token
@@ -94,7 +92,7 @@ def scorer_comet(comet_model, prefix, suffixes):
     return seg_scores
 
 
-def beam_search(contexts, scorer=scorer_comet, beam_size=2, temperature=1.0, top_p=0.9, num_tokens=20, num_samples=10, max_length=128):
+def beam_search(contexts, scorer=scorer_comet, beam_size=2, temperature=1.0, top_p=0.9, num_tokens=20, num_samples=10, max_length=115):
         final_outputs = []
         final_scores = []
         total_generated_tokens = 0
@@ -186,7 +184,7 @@ for kk, instance in tqdm.tqdm(enumerate(data), total=len(data)):
     target_seq_len.append(len(instance["targets"][0].split()))
     gen_seq_len.append(len(beam_text[0].split()))
 
-    if (kk + 1) % 100 == 0:
+    if (kk + 1) % 10 == 0:
         print(f"Avg lens ({kk + 1} instances) = {np.mean(gen_seq_len)} generation, {np.mean(target_seq_len)} target")
         print("Saving file...")
         with open(output_file, "w") as f:

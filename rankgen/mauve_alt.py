@@ -27,7 +27,6 @@ for i, row in df.iterrows():
     if row['model_b'] not in models:
         models.append(row['model_b'])
 
-pdb.set_trace()
 interesting = []
 sense = []
 humanlike = []
@@ -58,30 +57,32 @@ if os.path.exists('gt.pkl'):
         gt_data = pickle.load(f)
 else:
     gt_data = {}
-    for i, row in tqdm.tqdm(df.iterrows()):
-        model_a = row['model_a']
-        model_b = row['model_b']
-        prefix = clean(row['ctx'])
-        if prefix not in gt_data:
-            span = process.extractOne(prefix, text_data, scorer=fuzz.partial_ratio)[0]
-            match = find_near_matches(prefix, span[0:300], max_l_dist=20)
-            gt_suffix = span[match[0].end:].strip()
-            gt_data[prefix] = gt_suffix
-        if 'a' in row['q1']:
-            interesting.append((models.index(model_a), models.index(model_b)))
-        else:
-            interesting.append((models.index(model_b), models.index(model_a)))
-        if 'a' in row['q2']:
-            sense.append((models.index(model_a), models.index(model_b)))
-        else:
-            sense.append((models.index(model_b), models.index(model_a)))
-        if 'a' in row['q3']:
-            humanlike.append((models.index(model_a), models.index(model_b)))
-        else:
-            humanlike.append((models.index(model_b), models.index(model_a)))
-    with open('gt.pkl', 'wb') as f:
-        pickle.dump(gt_data, f)
 
+for i, row in tqdm.tqdm(df.iterrows()):
+    model_a = row['model_a']
+    model_b = row['model_b']
+    prefix = clean(row['ctx'])
+    if prefix not in gt_data:
+        span = process.extractOne(prefix, text_data, scorer=fuzz.partial_ratio)[0]
+        match = find_near_matches(prefix, span[0:300], max_l_dist=20)
+        gt_suffix = span[match[0].end:].strip()
+        gt_data[prefix] = gt_suffix
+    if 'a' in row['q1']:
+        interesting.append((models.index(model_a), models.index(model_b)))
+    else:
+        interesting.append((models.index(model_b), models.index(model_a)))
+    if 'a' in row['q2']:
+        sense.append((models.index(model_a), models.index(model_b)))
+    else:
+        sense.append((models.index(model_b), models.index(model_a)))
+    if 'a' in row['q3']:
+        humanlike.append((models.index(model_a), models.index(model_b)))
+    else:
+        humanlike.append((models.index(model_b), models.index(model_a)))
+with open('gt.pkl', 'wb') as f:
+    pickle.dump(gt_data, f)
+
+pdb.set_trace()
 interesting_params = choix.ilsr_pairwise(len(models), interesting)
 sense_params = choix.ilsr_pairwise(len(models), sense)
 humanlike_params = choix.ilsr_pairwise(len(models), humanlike)
@@ -89,6 +90,7 @@ humanlike_params = choix.ilsr_pairwise(len(models), humanlike)
 if os.path.exists('mauves.pkl'):
     with open('mauves.pkl', 'rb') as f:
         mauve_scores = pickle.load(f)
+        pdb.set_trace()
 else:
     mauve_scores = []
     for m in models:
